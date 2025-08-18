@@ -23,7 +23,7 @@ void idt_init(void) {
 
     idt_load();
 
-    sti();
+    //sti();
 }
 
 void idt_load(void) {

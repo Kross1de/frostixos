@@ -83,11 +83,11 @@ void isr_register_handler(u8 n, isr_handler_t handler) {
     interrupt_handlers[n] = handler;
 }
 
-void isr_handler(registers_t regs) {
-    if (interrupt_handlers[regs.int_no] != 0) {
-        isr_handler_t handler = interrupt_handlers[regs.int_no];
+void isr_handler(registers_t* regs) {
+    if (interrupt_handlers[regs->int_no] != 0) {
+        isr_handler_t handler = interrupt_handlers[regs->int_no];
         handler(regs);
-    } else if (regs.int_no < 32) {
-        kernel_panic(exception_messages[regs.int_no]);
+    } else if (regs->int_no < 32) {
+        kernel_panic(exception_messages[regs->int_no]);
     }
 }

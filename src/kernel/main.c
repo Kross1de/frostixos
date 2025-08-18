@@ -5,6 +5,7 @@
 #include <arch/i386/multiboot.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
+#include <arch/i386/pic.h>
 #include <drivers/screen.h>
 
 #if defined(__linux__)
@@ -31,6 +32,9 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     font_init();
     gdt_init();
     idt_init();
+    pic_remap(0x20, 0x28);
+    pic_mask_all();
+    sti();
 
     vbe_clear_screen(VBE_COLOR_BLACK);
 
@@ -41,5 +45,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
 
     screen_draw_string(10, 10, "Welcome to FrostixOS!", VBE_COLOR_WHITE, VBE_COLOR_BLACK);
 
-    screen_draw_demo();    
+    screen_draw_demo();
+
+    //__asm__ volatile ("int $3");
 }

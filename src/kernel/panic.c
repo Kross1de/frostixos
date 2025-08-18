@@ -17,7 +17,7 @@ void kernel_panic(const char* message) {
 
     if (vbe_is_available() && vbe_get_device() && vbe_get_device()->initialized) {
         draw_panic(message ? message : "Unknown panic");
-    } else { // use VGA text
+    } else { /* use VGA text */
         if (message) {
             volatile u16* vga_buffer = (volatile u16*)0xB8000;
             u8 panic_color = 0x4F;

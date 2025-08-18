@@ -5,12 +5,27 @@
 
 typedef struct {
     u32 ds;
-    u32 edi, esi, ebp, esp, ebx, edx, ecx, eax;
-    u32 int_no, err_code;
-    u32 eip, cs, eflags, useresp, ss;
+
+    u32 eax;
+    u32 ecx;
+    u32 edx;
+    u32 ebx;
+    u32 esp;
+    u32 ebp;
+    u32 esi;
+    u32 edi;
+
+    u32 int_no;
+    u32 err_code;
+
+    u32 eip;
+    u32 cs;
+    u32 eflags;
+    u32 useresp;
+    u32 ss;
 } registers_t;
 
-typedef void (*isr_handler_t)(registers_t);
+typedef void (*isr_handler_t)(registers_t* regs);
 
 void isr_init(void);
 void isr_register_handler(u8 n, isr_handler_t handler);
