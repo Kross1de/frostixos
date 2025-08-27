@@ -18,10 +18,14 @@ AS := nasm
 CC := i686-elf-gcc
 LD := i686-elf-gcc
 
-ASFLAGS := -felf32 -g -F dwarf
-CFLAGS := -std=gnu99 -ffreestanding -O2 -Wall -Wextra -Wno-unused-parameter
-CFLAGS += -I$(INCDIR) -g -MMD -MP
-LDFLAGS := -ffreestanding -O2 -nostdlib -lgcc -Wl,--build-id=none
+CVER = gnu99
+OPT = 2
+DEBUG_INFO = 2 # 2 = -g
+
+ASFLAGS := -felf32 -g$(DEBUG_INFO) -F dwarf
+CFLAGS := -std=$(CVER) -ffreestanding -O$(OPT) -Wall -Wextra -Wno-unused-parameter
+CFLAGS += -I$(INCDIR) -g$(DEBUG_INFO) -MMD -MP
+LDFLAGS := -ffreestanding -O$(OPT) -nostdlib -lgcc -Wl,--build-id=none
 
 C_SOURCES := $(shell find $(SRCDIR) -name '*.c' 2>/dev/null)
 ASM_SOURCES := $(shell find $(SRCDIR) -name '*.s' 2>/dev/null)
