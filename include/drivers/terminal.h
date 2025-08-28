@@ -22,5 +22,6 @@ void terminal_print(terminal_t* term, const char* str);
 void terminal_clear(terminal_t* term);
 void terminal_set_fg_color(terminal_t* term, vbe_color_t color);
 void terminal_set_bg_color(terminal_t* term, vbe_color_t color);
+void terminal_set_bgfg(terminal_t* term, vbe_color_t bg_color, vbe_color_t fg_color);
 
 #endif // TERMINAL_H

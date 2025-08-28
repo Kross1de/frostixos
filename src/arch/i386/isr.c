@@ -73,6 +73,22 @@ void isr_init(void) {
     idt_set_gate(29, (u32)isr29, 0x08, 0x8E);
     idt_set_gate(30, (u32)isr30, 0x08, 0x8E);
     idt_set_gate(31, (u32)isr31, 0x08, 0x8E);
+    idt_set_gate(32, (u32)isr32, 0x08, 0x8E);
+    idt_set_gate(33, (u32)isr33, 0x08, 0x8E);
+    idt_set_gate(34, (u32)isr34, 0x08, 0x8E);
+    idt_set_gate(35, (u32)isr35, 0x08, 0x8E);
+    idt_set_gate(36, (u32)isr36, 0x08, 0x8E);
+    idt_set_gate(37, (u32)isr37, 0x08, 0x8E);
+    idt_set_gate(38, (u32)isr38, 0x08, 0x8E);
+    idt_set_gate(39, (u32)isr39, 0x08, 0x8E);
+    idt_set_gate(40, (u32)isr40, 0x08, 0x8E);
+    idt_set_gate(41, (u32)isr41, 0x08, 0x8E);
+    idt_set_gate(42, (u32)isr42, 0x08, 0x8E);
+    idt_set_gate(43, (u32)isr43, 0x08, 0x8E);
+    idt_set_gate(44, (u32)isr44, 0x08, 0x8E);
+    idt_set_gate(45, (u32)isr45, 0x08, 0x8E);
+    idt_set_gate(46, (u32)isr46, 0x08, 0x8E);
+    idt_set_gate(47, (u32)isr47, 0x08, 0x8E);
 
     for (int i = 0; i < 256; i++) {
         interrupt_handlers[i] = 0;

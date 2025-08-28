@@ -60,3 +60,8 @@ void terminal_set_fg_color(terminal_t* term, vbe_color_t color) {
 void terminal_set_bg_color(terminal_t* term, vbe_color_t color) {
     term->bg_color = color;
 }
+
+void terminal_set_bgfg(terminal_t* term, vbe_color_t bg_color, vbe_color_t fg_color) {
+    terminal_set_bg_color(term, bg_color);
+    terminal_set_fg_color(term, fg_color);
+}

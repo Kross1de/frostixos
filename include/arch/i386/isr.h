@@ -62,5 +62,21 @@ extern void isr28(void);
 extern void isr29(void);
 extern void isr30(void);
 extern void isr31(void);
+extern void isr32(void);  // IRQ0
+extern void isr33(void);  // IRQ1
+extern void isr34(void);  // IRQ2
+extern void isr35(void);  // IRQ3
+extern void isr36(void);  // IRQ4
+extern void isr37(void);  // IRQ5
+extern void isr38(void);  // IRQ6
+extern void isr39(void);  // IRQ7
+extern void isr40(void);  // IRQ8
+extern void isr41(void);  // IRQ9
+extern void isr42(void);  // IRQ10
+extern void isr43(void);  // IRQ11
+extern void isr44(void);  // IRQ12
+extern void isr45(void);  // IRQ13
+extern void isr46(void);  // IRQ14
+extern void isr47(void);  // IRQ15
 
 #endif // ARCH_I386_ISR_H

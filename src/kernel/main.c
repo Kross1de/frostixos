@@ -6,6 +6,7 @@
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/pic.h>
+#include <arch/i386/pit.h>
 #include <drivers/terminal.h>
 
 #if defined(__linux__)
@@ -31,20 +32,13 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     vga_text_init();
     vbe_init();
     font_init();
+    terminal_init(&g_terminal);
     gdt_init();
     idt_init();
     pic_remap(0x20, 0x28);
     pic_mask_all();
+    pit_init(10);
+    pic_unmask(0);
     sti();
-
-    terminal_init(&g_terminal);
-    terminal_print(&g_terminal, "Welcome to FrostixOS!\n");
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_GREEN);
-    terminal_print(&g_terminal, "Green color\n");
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_RED);
-    terminal_set_bg_color(&g_terminal, VBE_COLOR_DARK_GRAY);
-    terminal_print(&g_terminal, "Red on dark grey =D\n");
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_WHITE);
-    terminal_set_bg_color(&g_terminal, VBE_COLOR_BLACK);
-    terminal_print(&g_terminal, "default\n");
+    terminal_print(&g_terminal, "Hello world\n");
 }
