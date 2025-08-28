@@ -6,7 +6,7 @@
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/pic.h>
-#include <drivers/screen.h>
+#include <drivers/terminal.h>
 
 #if defined(__linux__)
 #error "Cross-compiler required! Use i686-elf-gcc."
@@ -17,6 +17,7 @@
 #endif
 
 u32 _multiboot_info_ptr = 0;
+terminal_t g_terminal;
 
 void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     _multiboot_info_ptr = (u32)multiboot_info;
@@ -36,16 +37,6 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     pic_mask_all();
     sti();
 
-    vbe_clear_screen(VBE_COLOR_BLACK);
-
-    //kernel_panic("Testing kernel panic guys =D");
-
-    text_context_t ctx;
-    text_context_init(&ctx, 10, 10, VBE_COLOR_WHITE, VBE_COLOR_BLACK);
-
-    screen_draw_string(10, 10, "Welcome to FrostixOS!", VBE_COLOR_WHITE, VBE_COLOR_BLACK);
-
-    screen_draw_demo();
-
-    //__asm__ volatile ("int $3");
+    terminal_init(&g_terminal);
+    terminal_print(&g_terminal, "Hello, World\nnewline");
 }
