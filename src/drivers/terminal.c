@@ -2,10 +2,6 @@
 #include <kernel/kernel.h>
 
 void terminal_init(terminal_t* term) {
-    if (!term) {
-        return;
-    }
-
     term->font = font_get_default();
     if (!term->font) {
         term->max_cols = screen_get_width() / 8;
@@ -22,10 +18,6 @@ void terminal_init(terminal_t* term) {
 }
 
 void terminal_putchar(terminal_t* term, char c) {
-    if (!term || !term->font) {
-        return;
-    }
-
     if (c == '\n') {
         term->col = 0;
         term->row++;
@@ -50,21 +42,21 @@ void terminal_putchar(terminal_t* term, char c) {
 }
 
 void terminal_print(terminal_t* term, const char* str) {
-    if (!term || !str) {
-        return;
-    }
-
     for (const char* p = str; *p != '\0'; ++p) {
         terminal_putchar(term, *p);
     }
 }
 
 void terminal_clear(terminal_t* term) {
-    if (!term) {
-        return;
-    }
-
     screen_clear(term->bg_color);
     term->col = 0;
     term->row = 0;
+}
+
+void terminal_set_fg_color(terminal_t* term, vbe_color_t color) {
+    term->fg_color = color;
+}
+
+void terminal_set_bg_color(terminal_t* term, vbe_color_t color) {
+    term->bg_color = color;
 }

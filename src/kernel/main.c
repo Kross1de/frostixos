@@ -38,5 +38,13 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     sti();
 
     terminal_init(&g_terminal);
-    terminal_print(&g_terminal, "Hello, World\nnewline");
+    terminal_print(&g_terminal, "Welcome to FrostixOS!\n");
+    terminal_set_fg_color(&g_terminal, VBE_COLOR_GREEN);
+    terminal_print(&g_terminal, "Green color\n");
+    terminal_set_fg_color(&g_terminal, VBE_COLOR_RED);
+    terminal_set_bg_color(&g_terminal, VBE_COLOR_DARK_GRAY);
+    terminal_print(&g_terminal, "Red on dark grey =D\n");
+    terminal_set_fg_color(&g_terminal, VBE_COLOR_WHITE);
+    terminal_set_bg_color(&g_terminal, VBE_COLOR_BLACK);
+    terminal_print(&g_terminal, "default\n");
 }
