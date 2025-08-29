@@ -15,17 +15,20 @@ KERNEL := $(BUILDDIR)/frostix.bin
 ISO := frostix.iso
 
 AS := nasm
-CC := i686-elf-gcc
-LD := i686-elf-gcc
+CC := gcc
+LD := gcc
 
 CVER = gnu99
 OPT = 2
 DEBUG_INFO = 2 # 2 = -g
 
+ARCH_FLAGS := -m32 -march=i686 -mtune=generic
+TARGET_FLAGS := -ffreestanding -fno-pic -fno-pie -fno-stack-protector
+
 ASFLAGS := -felf32 -g$(DEBUG_INFO) -F dwarf
-CFLAGS := -std=$(CVER) -ffreestanding -O$(OPT) -Wall -Wextra -Wno-unused-parameter
+CFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS) -std=$(CVER) -O$(OPT) -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -I$(INCDIR) -g$(DEBUG_INFO) -MMD -MP
-LDFLAGS := -ffreestanding -O$(OPT) -nostdlib -lgcc -Wl,--build-id=none
+LDFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS) -O$(OPT) -Wl,--build-id=none -nostdlib -lgcc
 
 C_SOURCES := $(shell find $(SRCDIR) -name '*.c' 2>/dev/null)
 ASM_SOURCES := $(shell find $(SRCDIR) -name '*.s' 2>/dev/null)
@@ -164,14 +167,13 @@ distclean: clean
 install-deps-arch:
 	$(call print_info,"Installing dependencies for Arch Linux...")
 	@sudo pacman -S --needed base-devel nasm qemu-desktop grub xorriso
-	$(call print_warning,"You may need to install i686-elf-gcc cross-compiler manually")
-	$(call print_info,"Try: yay -S i686-elf-gcc i686-elf-binutils")
+	$(call print_success,"Dependencies installed - using host gcc")
 
 install-deps-ubuntu:
 	$(call print_info,"Installing dependencies for Ubuntu/Debian...")
 	@sudo apt update
 	@sudo apt install -y build-essential nasm qemu-system-x86 grub-common grub-pc-bin xorriso
-	$(call print_warning,"You may need to build i686-elf-gcc cross-compiler from source")
+	$(call print_success,"Dependencies installed - using host gcc")
 
 format:
 	$(call print_info,"Formatting source code...")
@@ -205,7 +207,7 @@ help:
 	@echo "  install-deps-ubuntu  - Install dependencies on Ubuntu/Debian"
 	@echo ""
 	@echo "Requirements:"
-	@echo "  - i686-elf cross-compiler (i686-elf-gcc, i686-elf-ld)"
+	@echo "  - GCC compiler"
 	@echo "  - NASM assembler"
 	@echo "  - GRUB tools (grub-mkrescue, grub-file)"
 	@echo "  - QEMU (qemu-system-i386)"

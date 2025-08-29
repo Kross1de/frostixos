@@ -9,10 +9,6 @@
 #include <arch/i386/pit.h>
 #include <lib/terminal.h>
 
-#if defined(__linux__)
-#error "Cross-compiler required! Use i686-elf-gcc."
-#endif
-
 #if !defined(__i386__)
 #error "This kernel targets i386 architecture only."
 #endif
