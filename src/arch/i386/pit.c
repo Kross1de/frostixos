@@ -1,6 +1,6 @@
 #include <arch/i386/pit.h>
 #include <arch/i386/isr.h>
-#include <drivers/terminal.h>
+#include <lib/terminal.h>
 
 extern terminal_t g_terminal;
 

@@ -1,4 +1,4 @@
-#include <drivers/terminal.h>
+#include <lib/terminal.h>
 #include <kernel/kernel.h>
 
 void terminal_init(terminal_t* term) {
@@ -23,7 +23,23 @@ void terminal_putchar(terminal_t* term, char c) {
         term->row++;
     } else if (c == '\r') {
         term->col = 0;
-    } else {
+    } else if (c == '\b') {
+        if (term->col > 0) {
+            term->col--;
+        } else if (term->row > 0) {
+            term->row--;
+            term->col = term->max_cols - 1;
+        }
+        u16 x = term->col * term->font->width;
+        u16 y = term->row * term->font->height;
+        font_render_char(' ', x, y, term->fg_color, term->bg_color, term->font);
+    } else if (c == '\t') {
+        term->col = (term->col + 8) & ~7;
+        if (term->col >= term->max_cols) {
+            term->col = 0;
+            term->row++;
+        }
+    } else if (c >= ' ') {
         u16 x = term->col * term->font->width;
         u16 y = term->row * term->font->height;
         font_render_char(c, x, y, term->fg_color, term->bg_color, term->font);

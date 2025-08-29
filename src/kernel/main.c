@@ -1,13 +1,13 @@
 #include <kernel/kernel.h>
 #include <drivers/vga_text.h>
 #include <drivers/vbe.h>
-#include <drivers/font.h>
+#include <lib/font.h>
 #include <arch/i386/multiboot.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/pic.h>
 #include <arch/i386/pit.h>
-#include <drivers/terminal.h>
+#include <lib/terminal.h>
 
 #if defined(__linux__)
 #error "Cross-compiler required! Use i686-elf-gcc."
@@ -40,5 +40,5 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     pit_init(10);
     pic_unmask(0);
     sti();
-    terminal_print(&g_terminal, "Hello world\n");
+    terminal_print(&g_terminal, "\tHello world\b\n");
 }

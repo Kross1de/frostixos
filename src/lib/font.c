@@ -1,4 +1,4 @@
-#include <drivers/font.h>
+#include <lib/font.h>
 #include <drivers/vbe.h>
 #include <kernel/kernel.h>
 

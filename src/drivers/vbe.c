@@ -44,12 +44,21 @@ kernel_status_t vbe_init(void) {
     g_vbe_device.memory_model = vbe_mode->memory_model;
     g_vbe_device.linear_supported = (vbe_mode->mode_attributes & VBE_MODE_ATTR_LINEAR) ? true : false;
 
-    g_vbe_device.red_mask_size = vbe_mode->lin_red_mask_size;
-    g_vbe_device.red_field_position = vbe_mode->lin_red_field_position;
-    g_vbe_device.green_mask_size = vbe_mode->lin_green_mask_size;
-    g_vbe_device.green_field_position = vbe_mode->lin_green_field_position;
-    g_vbe_device.blue_mask_size = vbe_mode->lin_blue_mask_size;
-    g_vbe_device.blue_field_position = vbe_mode->lin_blue_field_position;
+    if (g_vbe_device.linear_supported) {
+        g_vbe_device.red_mask_size = vbe_mode->lin_red_mask_size;
+        g_vbe_device.red_field_position = vbe_mode->lin_red_field_position;
+        g_vbe_device.green_mask_size = vbe_mode->lin_green_mask_size;
+        g_vbe_device.green_field_position = vbe_mode->lin_green_field_position;
+        g_vbe_device.blue_mask_size = vbe_mode->lin_blue_mask_size;
+        g_vbe_device.blue_field_position = vbe_mode->lin_blue_field_position;
+    } else {
+        g_vbe_device.red_mask_size = vbe_mode->red_mask_size;
+        g_vbe_device.red_field_position = vbe_mode->red_field_position;
+        g_vbe_device.green_mask_size = vbe_mode->green_mask_size;
+        g_vbe_device.green_field_position = vbe_mode->green_field_position;
+        g_vbe_device.blue_mask_size = vbe_mode->blue_mask_size;
+        g_vbe_device.blue_field_position = vbe_mode->blue_field_position;
+    }
 
     g_vbe_device.framebuffer_size = g_vbe_device.pitch * g_vbe_device.height;
 
@@ -141,28 +150,25 @@ kernel_status_t vbe_put_pixel(u16 x, u16 y, vbe_color_t color) {
         return KERNEL_ERROR;
 
     u32 pixel = vbe_color_to_pixel(color);
-    u32 offset = y * dev->pitch + x * (dev->bpp / 8);
+    u32 bytes_per_pixel = dev->bpp / 8;
+    u32 offset = y * dev->pitch + x * bytes_per_pixel;
+    u8* ptr = g_vbe_framebuffer + offset;
 
     switch (dev->bpp) {
-        case 32: {
-            ((u32*)g_vbe_framebuffer)[y * dev->width + x] = pixel;
+        case 32:
+            *(u32*)ptr = pixel;
             break;
-        }
-        case 24: {
-            u8* p = g_vbe_framebuffer + offset;
-            p[0] = (pixel >> 0) & 0xFF;
-            p[1] = (pixel >> 8) & 0xFF;
-            p[2] = (pixel >> 16) & 0xFF;
+        case 24:
+            ptr[0] = (pixel >> 0) & 0xFF;
+            ptr[1] = (pixel >> 8) & 0xFF;
+            ptr[2] = (pixel >> 16) & 0xFF;
             break;
-        }
-        case 16: {
-            ((u16*)g_vbe_framebuffer)[y * dev->width + x] = (u16)pixel;
+        case 16:
+            *(u16*)ptr = (u16)pixel;
             break;
-        }
-        case 8: {
-            g_vbe_framebuffer[offset] = (u8)pixel;
+        case 8:
+            *ptr = (u8)pixel;
             break;
-        }
         default:
             return KERNEL_NOT_IMPLEMENTED;
     }
@@ -175,17 +181,24 @@ vbe_color_t vbe_get_pixel(u16 x, u16 y) {
     if (!dev || x >= dev->width || y >= dev->height || !g_vbe_framebuffer)
         return result;
 
-    u32 offset = y * dev->pitch + x * (dev->bpp / 8);
+    u32 bytes_per_pixel = dev->bpp / 8;
+    u32 offset = y * dev->pitch + x * bytes_per_pixel;
+    u8* ptr = g_vbe_framebuffer + offset;
     u32 pixel = 0;
+
     switch (dev->bpp) {
-        case 32: pixel = ((u32*)g_vbe_framebuffer)[y * dev->width + x]; break;
-        case 24: {
-            u8* p = g_vbe_framebuffer + offset;
-            pixel = (p[2] << 16) | (p[1] << 8) | (p[0]);
+        case 32:
+            pixel = *(u32*)ptr;
             break;
-        }
-        case 16: pixel = ((u16*)g_vbe_framebuffer)[y * dev->width + x]; break;
-        case 8: pixel = g_vbe_framebuffer[offset]; break;
+        case 24:
+            pixel = (ptr[2] << 16) | (ptr[1] << 8) | (ptr[0]);
+            break;
+        case 16:
+            pixel = *(u16*)ptr;
+            break;
+        case 8:
+            pixel = *ptr;
+            break;
     }
     return vbe_pixel_to_color(pixel);
 }

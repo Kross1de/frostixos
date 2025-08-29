@@ -1,9 +1,9 @@
-#ifndef TERMINAL_H
-#define TERMINAL_H
+#ifndef LIB_TERMINAL_H
+#define LIB_TERMINAL_H
 
 #include <kernel/kernel.h>
 #include <drivers/vbe.h>
-#include <drivers/font.h>
+#include <lib/font.h>
 #include <drivers/screen.h>
 
 typedef struct {
@@ -24,4 +24,4 @@ void terminal_set_fg_color(terminal_t* term, vbe_color_t color);
 void terminal_set_bg_color(terminal_t* term, vbe_color_t color);
 void terminal_set_bgfg(terminal_t* term, vbe_color_t bg_color, vbe_color_t fg_color);
 
-#endif // TERMINAL_H
+#endif // LIB_TERMINAL_H

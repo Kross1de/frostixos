@@ -1,6 +1,6 @@
 #include <kernel/kernel.h>
 #include <drivers/vbe.h>
-#include <drivers/font.h>
+#include <lib/font.h>
 #include <drivers/screen.h>
 #include <stddef.h>
 

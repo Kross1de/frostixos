@@ -1,6 +1,6 @@
 #include <drivers/screen.h>
 #include <drivers/vbe.h>
-#include <drivers/font.h>
+#include <lib/font.h>
 #include <kernel/kernel.h>
 
 void screen_draw_rect(u16 x, u16 y, u16 width, u16 height, vbe_color_t fill, vbe_color_t border) {

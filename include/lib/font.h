@@ -1,5 +1,5 @@
-#ifndef DRIVERS_FONT_H
-#define DRIVERS_FONT_H
+#ifndef LIB_FONT_H
+#define LIB_FONT_H
 
 #include <kernel/kernel.h>
 #include <drivers/vbe.h>
@@ -34,4 +34,4 @@ void text_context_newline(text_context_t* ctx);
 void text_context_set_position(text_context_t* ctx, u16 x, u16 y);
 void text_context_set_colors(text_context_t* ctx, vbe_color_t fg_color, vbe_color_t bg_color);
 
-#endif // DRIVERS_FONT_H
+#endif // LIB_FONT_H
