@@ -23,12 +23,13 @@ OPT = 2
 DEBUG_INFO = 2 # 2 = -g
 
 ARCH_FLAGS := -m32 -march=i686 -mtune=generic
-TARGET_FLAGS := -ffreestanding -fno-pic -fno-pie -fno-stack-protector
+TARGET_FLAGS_COMPILE := -ffreestanding -fno-pic -fno-pie -fno-stack-protector
+TARGET_FLAGS_LINK := -ffreestanding -no-pie -fno-stack-protector
 
 ASFLAGS := -felf32 -g$(DEBUG_INFO) -F dwarf
-CFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS) -std=$(CVER) -O$(OPT) -Wall -Wextra -Wno-unused-parameter
+CFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS_COMPILE) -std=$(CVER) -O$(OPT) -Wall -Wextra -Wno-unused-parameter
 CFLAGS += -I$(INCDIR) -g$(DEBUG_INFO) -MMD -MP
-LDFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS) -O$(OPT) -Wl,--build-id=none -nostdlib -lgcc
+LDFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS_LINK) -O$(OPT) -Wl,--build-id=none -nostdlib -lgcc
 
 C_SOURCES := $(shell find $(SRCDIR) -name '*.c' 2>/dev/null)
 ASM_SOURCES := $(shell find $(SRCDIR) -name '*.s' 2>/dev/null)
