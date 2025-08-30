@@ -9,6 +9,7 @@
 #include <arch/i386/pit.h>
 #include <lib/terminal.h>
 #include <printf.h>
+#include <mm/bitmap.h>
 
 #if !defined(__i386__)
 #error "This kernel targets i386 architecture only."
@@ -32,11 +33,12 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     terminal_init(&g_terminal);
     gdt_init();
     idt_init();
-    pic_remap(0x20, 0x28);
-    pic_mask_all();
     pit_init(10);
-    pic_unmask(0);
     sti();
-    terminal_print(&g_terminal, "\tHello world\b\n");
-    printf("\tHello, %s!\b\n", "world");
+    pmm_init(multiboot_info);
+    printf("Welcome to FrostixOS!\n");
+    u32 page = pmm_alloc_page();
+    printf("Allocated page at 0x%x\n", page);
+    pmm_free_page(page);
+    //kernel_panic("Test");
 }

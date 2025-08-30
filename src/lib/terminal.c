@@ -84,7 +84,7 @@ void terminal_set_bgfg(terminal_t* term, vbe_color_t bg_color, vbe_color_t fg_co
     terminal_set_fg_color(term, fg_color);
 }
 
-int _putchar(char c) {
-    terminal_putchar(&g_terminal, c);
-    return (int)c;
+int _putchar(char character) {
+    terminal_putchar(&g_terminal, character);
+    return (int)character;
 }

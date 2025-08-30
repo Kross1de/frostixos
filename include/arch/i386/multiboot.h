@@ -10,8 +10,13 @@
 #define MULTIBOOT_MEMORY_INFO         0x00000002
 #define MULTIBOOT_VIDEO_MODE          0x00000004
 #define MULTIBOOT_AOUT_KLUDGE         0x00010000
+#define MULTIBOOT_INFO_MODS           0x00000008
+#define MULTIBOOT_INFO_MEM_MAP        0x00000040
 
 #define MULTIBOOT_FLAGS (MULTIBOOT_PAGE_ALIGN | MULTIBOOT_MEMORY_INFO | MULTIBOOT_VIDEO_MODE)
+
+#define MULTIBOOT_MEMORY_AVAILABLE    1
+#define MULTIBOOT_MEMORY_RESERVED     2
 
 typedef struct {
     u32 magic;
@@ -36,6 +41,13 @@ typedef struct {
     u64 len;
     u32 type;
 } __attribute__((packed)) multiboot_memory_map_t;
+
+typedef struct {
+    u32 mod_start;
+    u32 mod_end;
+    u32 string;
+    u32 reserved;
+} __attribute__((packed)) multiboot_module_t;
 
 typedef struct {
     char signature[4];

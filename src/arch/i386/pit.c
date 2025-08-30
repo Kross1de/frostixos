@@ -1,5 +1,6 @@
 #include <arch/i386/pit.h>
 #include <arch/i386/isr.h>
+#include <arch/i386/pic.h>
 #include <lib/terminal.h>
 
 extern terminal_t g_terminal;
@@ -18,4 +19,5 @@ void pit_init(u32 frequency) {
     u8 high = (u8)((divisor >> 8) & 0xFF);
     outb(0x40, low);
     outb(0x40, high);
+    pic_unmask(0);
 }

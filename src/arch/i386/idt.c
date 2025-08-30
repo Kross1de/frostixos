@@ -1,4 +1,5 @@
 #include <arch/i386/idt.h>
+#include <arch/i386/pic.h>
 
 static idt_entry_t idt[IDT_ENTRIES];
 static idt_ptr_t   idtp;
@@ -19,11 +20,11 @@ void idt_init(void) {
 
     memset(&idt, 0, sizeof(idt_entry_t) * IDT_ENTRIES);
 
+    pic_remap(0x20, 0x28);
+    pic_mask_all();
+
     isr_init();
-
     idt_load();
-
-    //sti();
 }
 
 void idt_load(void) {
