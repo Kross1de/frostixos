@@ -8,6 +8,7 @@
 #include <arch/i386/pic.h>
 #include <arch/i386/pit.h>
 #include <lib/terminal.h>
+#include <printf.h>
 
 #if !defined(__i386__)
 #error "This kernel targets i386 architecture only."
@@ -37,4 +38,5 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     pic_unmask(0);
     sti();
     terminal_print(&g_terminal, "\tHello world\b\n");
+    printf("\tHello, %s!\b\n", "world");
 }

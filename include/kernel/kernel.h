@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #define FROSTIX_VERSION_MAJOR 0
 #define FROSTIX_VERSION_MINOR 1
@@ -18,11 +19,6 @@ typedef signed short       s16;
 typedef signed short       i16;
 typedef signed int         s32;
 typedef signed long long   s64;
-
-typedef enum {
-    false = 0,
-    true = 1
-} bool;
 
 typedef enum {
     KERNEL_OK = 0,

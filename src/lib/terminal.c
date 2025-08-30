@@ -1,6 +1,8 @@
 #include <lib/terminal.h>
 #include <kernel/kernel.h>
 
+extern terminal_t g_terminal;
+
 void terminal_init(terminal_t* term) {
     term->font = font_get_default();
     if (!term->font) {
@@ -80,4 +82,9 @@ void terminal_set_bg_color(terminal_t* term, vbe_color_t color) {
 void terminal_set_bgfg(terminal_t* term, vbe_color_t bg_color, vbe_color_t fg_color) {
     terminal_set_bg_color(term, bg_color);
     terminal_set_fg_color(term, fg_color);
+}
+
+int _putchar(char c) {
+    terminal_putchar(&g_terminal, c);
+    return (int)c;
 }

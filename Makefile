@@ -7,6 +7,7 @@ VERSION := 0.1.0
 
 SRCDIR := src
 INCDIR := include
+LIBCINC := include/lib/libc
 BUILDDIR := build
 ISODIR := iso
 SCRIPTSDIR := scripts
@@ -28,7 +29,7 @@ TARGET_FLAGS_LINK := -ffreestanding -no-pie -fno-stack-protector
 
 ASFLAGS := -felf32 -g$(DEBUG_INFO) -F dwarf
 CFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS_COMPILE) -std=$(CVER) -O$(OPT) -Wall -Wextra -Wno-unused-parameter
-CFLAGS += -I$(INCDIR) -g$(DEBUG_INFO) -MMD -MP
+CFLAGS += -I$(INCDIR) -I$(LIBCINC) -g$(DEBUG_INFO) -MMD -MP
 LDFLAGS := $(ARCH_FLAGS) $(TARGET_FLAGS_LINK) -O$(OPT) -Wl,--build-id=none -nostdlib -lgcc
 
 C_SOURCES := $(shell find $(SRCDIR) -name '*.c' 2>/dev/null)
