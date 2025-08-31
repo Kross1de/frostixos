@@ -16,6 +16,8 @@ typedef struct {
 	const font_t* font;
 } terminal_t;
 
+extern terminal_t g_terminal;
+
 void terminal_init(terminal_t* term);
 void terminal_putchar(terminal_t* term, char c);
 void terminal_print(terminal_t* term, const char* str);

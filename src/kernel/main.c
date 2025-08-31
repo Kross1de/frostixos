@@ -1,6 +1,8 @@
 #include <kernel/kernel.h>
 #include <drivers/vga_text.h>
 #include <drivers/vbe.h>
+#include <drivers/serial.h>
+#include <misc/logger.h>
 #include <lib/font.h>
 #include <arch/i386/multiboot.h>
 #include <arch/i386/gdt.h>
@@ -28,6 +30,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     }
 
     vga_text_init();
+    serial_init();
     vbe_init();
     font_init();
     terminal_init(&g_terminal);
@@ -37,6 +40,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     sti();
     pmm_init(multiboot_info);
     printf("Welcome to FrostixOS!\n");
+    log(LOG_OKAY, "Kernel initialized successfully");
     u32 page = pmm_alloc_page();
     printf("Allocated page at 0x%x\n", page);
     pmm_free_page(page);

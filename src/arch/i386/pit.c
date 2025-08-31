@@ -3,8 +3,6 @@
 #include <arch/i386/pic.h>
 #include <lib/terminal.h>
 
-extern terminal_t g_terminal;
-
 static void pit_handler(registers_t* regs) {
     UNUSED(regs);
     outb(0x20, 0x20);

@@ -1,8 +1,6 @@
 #include <lib/terminal.h>
 #include <kernel/kernel.h>
 
-extern terminal_t g_terminal;
-
 void terminal_init(terminal_t* term) {
     term->font = font_get_default();
     if (!term->font) {
