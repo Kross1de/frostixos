@@ -48,7 +48,7 @@ static void serial_out(char c, void* arg) {
 int serial_printf(const char* fmt, ...) {
     va_list va;
     va_start(va, fmt);
-    int ret = fctprintf(serial_out, NULL, fmt, va);
+    int ret = vfctprintf(serial_out, NULL, fmt, va);
     va_end(va);
     return ret;
 }

@@ -40,9 +40,13 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     sti();
     pmm_init(multiboot_info);
     printf("Welcome to FrostixOS!\n");
-    log(LOG_OKAY, "Kernel initialized successfully");
+    log(LOG_INFO, "Info log");
+    log(LOG_WARN, "Warn log");
+    log(LOG_ERR,  " Err  log");
+    log(LOG_OKAY, "Okay log");
     u32 page = pmm_alloc_page();
     printf("Allocated page at 0x%x\n", page);
     pmm_free_page(page);
+    serial_printf("number: %d\n", 3);
     //kernel_panic("Test");
 }

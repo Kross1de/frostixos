@@ -1,5 +1,6 @@
 #include <lib/terminal.h>
 #include <kernel/kernel.h>
+#include <drivers/serial.h>
 
 void terminal_init(terminal_t* term) {
     term->font = font_get_default();
@@ -69,12 +70,22 @@ void terminal_clear(terminal_t* term) {
     term->row = 0;
 }
 
+static inline void serial_set_ansi_fg(vbe_color_t color) {
+    serial_printf("\x1b[38;2;%u;%u;%um", color.red, color.green, color.blue);
+}
+
+static inline void serial_set_ansi_bg(vbe_color_t color) {
+    serial_printf("\x1b[48;2;%u;%u;%um", color.red, color.green, color.blue);
+}
+
 void terminal_set_fg_color(terminal_t* term, vbe_color_t color) {
     term->fg_color = color;
+    serial_set_ansi_fg(color);
 }
 
 void terminal_set_bg_color(terminal_t* term, vbe_color_t color) {
     term->bg_color = color;
+    serial_set_ansi_bg(color);
 }
 
 void terminal_set_bgfg(terminal_t* term, vbe_color_t bg_color, vbe_color_t fg_color) {
@@ -84,5 +95,6 @@ void terminal_set_bgfg(terminal_t* term, vbe_color_t bg_color, vbe_color_t fg_co
 
 int _putchar(char character) {
     terminal_putchar(&g_terminal, character);
+    serial_write_char(character);
     return (int)character;
 }

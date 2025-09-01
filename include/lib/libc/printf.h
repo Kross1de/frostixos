@@ -40,6 +40,7 @@
 extern "C" {
 #endif
 
+
 /**
  * Output a character to a custom device like UART, used by the printf() function
  * This function is declared here only. You have to write your custom implementation somewhere
@@ -107,10 +108,19 @@ int vprintf_(const char* format, va_list va);
  */
 int fctprintf(void (*out)(char character, void* arg), void* arg, const char* format, ...);
 
+/**
+ * vprintf variant for custom output function
+ * \param out Output function taking one character and an argument pointer
+ * \param arg Argument pointer passed to the output function
+ * \param format Format string
+ * \param va Variable argument list
+ * \return The number of characters that are sent to the output function, not counting the terminating null character
+ */
+int vfctprintf(void (*out)(char character, void* arg), void* arg, const char* format, va_list va);
+
 
 #ifdef __cplusplus
-}
+extern "C" {
 #endif
-
 
 #endif  // _PRINTF_H_
