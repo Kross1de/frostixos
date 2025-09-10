@@ -4,28 +4,28 @@
 #include <kernel/kernel.h>
 
 typedef struct {
-    u32 ds;
+  u32 ds;
 
-    u32 eax;
-    u32 ecx;
-    u32 edx;
-    u32 ebx;
-    u32 esp;
-    u32 ebp;
-    u32 esi;
-    u32 edi;
+  u32 eax;
+  u32 ecx;
+  u32 edx;
+  u32 ebx;
+  u32 esp;
+  u32 ebp;
+  u32 esi;
+  u32 edi;
 
-    u32 int_no;
-    u32 err_code;
+  u32 int_no;
+  u32 err_code;
 
-    u32 eip;
-    u32 cs;
-    u32 eflags;
-    u32 useresp;
-    u32 ss;
+  u32 eip;
+  u32 cs;
+  u32 eflags;
+  u32 useresp;
+  u32 ss;
 } registers_t;
 
-typedef void (*isr_handler_t)(registers_t* regs);
+typedef void (*isr_handler_t)(registers_t *regs);
 
 void isr_init(void);
 void isr_register_handler(u8 n, isr_handler_t handler);
@@ -62,21 +62,21 @@ extern void isr28(void);
 extern void isr29(void);
 extern void isr30(void);
 extern void isr31(void);
-extern void isr32(void);  // IRQ0
-extern void isr33(void);  // IRQ1
-extern void isr34(void);  // IRQ2
-extern void isr35(void);  // IRQ3
-extern void isr36(void);  // IRQ4
-extern void isr37(void);  // IRQ5
-extern void isr38(void);  // IRQ6
-extern void isr39(void);  // IRQ7
-extern void isr40(void);  // IRQ8
-extern void isr41(void);  // IRQ9
-extern void isr42(void);  // IRQ10
-extern void isr43(void);  // IRQ11
-extern void isr44(void);  // IRQ12
-extern void isr45(void);  // IRQ13
-extern void isr46(void);  // IRQ14
-extern void isr47(void);  // IRQ15
+extern void isr32(void); // IRQ0
+extern void isr33(void); // IRQ1
+extern void isr34(void); // IRQ2
+extern void isr35(void); // IRQ3
+extern void isr36(void); // IRQ4
+extern void isr37(void); // IRQ5
+extern void isr38(void); // IRQ6
+extern void isr39(void); // IRQ7
+extern void isr40(void); // IRQ8
+extern void isr41(void); // IRQ9
+extern void isr42(void); // IRQ10
+extern void isr43(void); // IRQ11
+extern void isr44(void); // IRQ12
+extern void isr45(void); // IRQ13
+extern void isr46(void); // IRQ14
+extern void isr47(void); // IRQ15
 
 #endif // ARCH_I386_ISR_H
