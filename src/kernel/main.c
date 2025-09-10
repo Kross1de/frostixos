@@ -48,5 +48,6 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t* multiboot_info) {
     printf("Allocated page at 0x%x\n", page);
     pmm_free_page(page);
     serial_printf("number: %d\n", 3);
+    screen_draw_demo();
     //kernel_panic("Test");
 }

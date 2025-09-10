@@ -121,7 +121,7 @@ check: $(KERNEL)
 run: $(ISO)
 	$(call print_info,"Starting $(PROJECT_NAME)...")
 	@if command -v qemu-system-i386 >/dev/null 2>&1; then \
-		qemu-system-i386 -cdrom $(ISO) -m 32M -serial stdio; \
+		qemu-system-i386 -cdrom $(ISO) -m 128M -serial stdio; \
 	else \
 		$(call print_error,"qemu-system-i386 not found. Install QEMU."); \
 		exit 1; \
@@ -130,7 +130,7 @@ run: $(ISO)
 run-debug: $(ISO)
 	$(call print_info,"Starting $(PROJECT_NAME) with debugging...")
 	@if command -v qemu-system-i386 >/dev/null 2>&1; then \
-		qemu-system-i386 -cdrom $(ISO) -m 32M -s -S -serial stdio; \
+		qemu-system-i386 -cdrom $(ISO) -m 128M -s -S -serial stdio; \
 	else \
 		$(call print_error,"qemu-system-i386 not found. Install QEMU."); \
 		exit 1; \
