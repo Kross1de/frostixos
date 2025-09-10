@@ -1,3 +1,4 @@
+#include <arch/i386/cpuid.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/multiboot.h>
@@ -23,6 +24,9 @@ terminal_t g_terminal;
 void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   _multiboot_info_ptr = (u32)multiboot_info;
   kernel_status_t status;
+  cpuid_vendor_t vendor;
+  cpuid_features_t features;
+  cpuid_extended_t extended;
 
   status = multiboot_init(multiboot_magic, multiboot_info);
   if (status != KERNEL_OK) {
@@ -40,14 +44,18 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   sti();
   pmm_init(multiboot_info);
   printf("Welcome to FrostixOS!\n");
-  //log(LOG_INFO, "Info log");
-  //log(LOG_WARN, "Warn log");
-  //log(LOG_ERR, " Err  log");
-  //log(LOG_OKAY, "Okay log");
-  u32 page = pmm_alloc_page();
-  printf("Allocated page at 0x%x\n", page);
-  pmm_free_page(page);
-  serial_printf("number: %d\n", 3);
-  screen_draw_demo();
+  cpuid_init();
+  cpuid_get_vendor(&vendor);
+  printf("CPU Vendor: %s\n", vendor.vendor);
+  cpuid_get_features(&features);
+  printf("CPU Features - EAX: 0x%x, EBX: 0x%x, ECX: 0x%x, EDX: 0x%x\n",
+         features.eax, features.ebx, features.ecx, features.edx);
+  cpuid_get_extended(&extended);
+  printf("CPU Brand: %s\n", extended.brand_string);
+  // log(LOG_INFO, "Info log");
+  // log(LOG_WARN, "Warn log");
+  // log(LOG_ERR, " Err  log");
+  // log(LOG_OKAY, "Okay log");
+  // screen_draw_demo();
   // kernel_panic("Test");
 }

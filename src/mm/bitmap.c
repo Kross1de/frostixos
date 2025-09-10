@@ -1,8 +1,8 @@
 #include <arch/i386/multiboot.h>
 #include <drivers/serial.h>
 #include <kernel/kernel.h>
-#include <mm/bitmap.h>
 #include <misc/logger.h>
+#include <mm/bitmap.h>
 #include <printf.h>
 
 bitmap_allocator_t g_physical_allocator = {0};
@@ -111,7 +111,7 @@ kernel_status_t pmm_init(multiboot_info_t *mb_info) {
 
   mark_region_allocated(0x100000, (u32)&_kernel_end - 0x100000);
 
-  log(LOG_INFO, "PMM initialized: %u total pages, %u free pages", 
+  log(LOG_INFO, "PMM initialized: %u total pages, %u free pages",
       g_physical_allocator.total_pages, g_physical_allocator.free_pages);
   return KERNEL_OK;
 }
