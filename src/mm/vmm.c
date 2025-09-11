@@ -54,6 +54,47 @@ kernel_status_t vmm_init(void) {
     }
   }
 
+  extern u32 _multiboot_info_ptr;
+  multiboot_info_t *mbi = (multiboot_info_t *)_multiboot_info_ptr;
+  if (mbi && (mbi->flags & (1 << 11))) {
+    u32 mbi_addr = (u32)mbi;
+    u32 mbi_pages = ALIGN_UP(sizeof(multiboot_info_t), PAGE_SIZE) / PAGE_SIZE;
+    for (u32 i = 0; i < mbi_pages; ++i) {
+      u32 virt = mbi_addr + i * PAGE_SIZE;
+      vmm_map_page(virt, virt, PAGE_FLAG_PRESENT | PAGE_FLAG_RW);
+    }
+
+    u32 vbe_control_addr = mbi->vbe_control_info;
+    u32 vbe_control_pages =
+        ALIGN_UP(sizeof(vbe_control_info_t), PAGE_SIZE) / PAGE_SIZE;
+    for (u32 i = 0; i < vbe_control_pages; ++i) {
+      u32 virt = vbe_control_addr + i * PAGE_SIZE;
+      vmm_map_page(virt, virt, PAGE_FLAG_PRESENT | PAGE_FLAG_RW);
+    }
+
+    u32 vbe_mode_addr = mbi->vbe_mode_info;
+    u32 vbe_mode_pages =
+        ALIGN_UP(sizeof(vbe_mode_info_t), PAGE_SIZE) / PAGE_SIZE;
+    for (u32 i = 0; i < vbe_mode_pages; ++i) {
+      u32 virt = vbe_mode_addr + i * PAGE_SIZE;
+      vmm_map_page(virt, virt, PAGE_FLAG_PRESENT | PAGE_FLAG_RW);
+    }
+
+    vbe_device_t *dev = vbe_get_device();
+    u32 video_modes_addr = dev->control_info.video_modes_ptr;
+    u32 seg = video_modes_addr >> 16;
+    u32 off = video_modes_addr & 0xFFFF;
+    video_modes_addr = seg * 16 + off;
+    vmm_map_page(ALIGN_DOWN(video_modes_addr, PAGE_SIZE),
+                 ALIGN_DOWN(video_modes_addr, PAGE_SIZE),
+                 PAGE_FLAG_PRESENT | PAGE_FLAG_RW);
+
+    u32 oem_string_addr = dev->control_info.oem_string_ptr;
+    vmm_map_page(ALIGN_DOWN(oem_string_addr, PAGE_SIZE),
+                 ALIGN_DOWN(oem_string_addr, PAGE_SIZE),
+                 PAGE_FLAG_PRESENT | PAGE_FLAG_RW);
+  }
+
   kernel_page_directory[PAGE_RECURSIVE_SLOT] =
       (u32)&kernel_page_directory | PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
 

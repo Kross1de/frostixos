@@ -2,6 +2,7 @@
 #include <drivers/vbe.h>
 #include <kernel/kernel.h>
 #include <misc/logger.h>
+#include <mm/vmm.h>
 #include <printf.h>
 
 extern u32 _multiboot_info_ptr;
@@ -252,7 +253,12 @@ kernel_status_t vbe_draw_vertical_line(u16 x, u16 y, u16 height,
 
 kernel_status_t vbe_show_info(void) {
   printf("VBE Version: %x\n", g_device.control_info.version);
-  printf("OEM String: %s\n", (char *)(g_device.control_info.oem_string_ptr));
+  if (g_device.control_info.oem_string_ptr &&
+      vmm_get_physical_addr(g_device.control_info.oem_string_ptr) != 0) {
+    printf("OEM String: %s\n", (char *)g_device.control_info.oem_string_ptr);
+  } else {
+    printf("OEM String: (unavailable)\n");
+  }
   printf("Total Memory: %u KB\n", (u32)g_device.control_info.total_memory * 64);
   printf("Current Mode: 0x%x\n", g_device.current_mode);
   printf("Resolution: %ux%u\n", g_device.width, g_device.height);
@@ -267,11 +273,15 @@ kernel_status_t vbe_list_modes(void) {
   u32 off = g_device.control_info.video_modes_ptr & 0xFFFF;
   u32 phys_addr = seg * 16 + off;
   u16 *modes = (u16 *)phys_addr;
+  u32 page_boundary = ALIGN_UP(phys_addr, PAGE_SIZE);
 
   printf("Supported VBE Modes:\n");
-  while (*modes != 0xFFFF) {
+  while (*modes != 0xFFFF && (u32)modes < page_boundary) {
     printf("0x%x\n", *modes);
     ++modes;
+  }
+  if ((u32)modes >= page_boundary) {
+    log(LOG_WARN, "VBE: Mode list exceeds mapped page boundary");
   }
   return KERNEL_OK;
 }

@@ -54,4 +54,5 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
          features.eax, features.ebx, features.ecx, features.edx);
   cpuid_get_extended(&extended);
   printf("CPU Brand: %s\n", extended.brand_string);
+  vbe_show_info();
 }
