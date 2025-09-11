@@ -12,6 +12,7 @@
 #include <lib/terminal.h>
 #include <misc/logger.h>
 #include <mm/bitmap.h>
+#include <mm/vmm.h>
 #include <printf.h>
 
 #if !defined(__i386__)
@@ -43,6 +44,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   pit_init(10);
   sti();
   pmm_init(multiboot_info);
+  vmm_init();
   printf("Welcome to FrostixOS!\n");
   cpuid_init();
   cpuid_get_vendor(&vendor);
@@ -52,10 +54,4 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
          features.eax, features.ebx, features.ecx, features.edx);
   cpuid_get_extended(&extended);
   printf("CPU Brand: %s\n", extended.brand_string);
-  // log(LOG_INFO, "Info log");
-  // log(LOG_WARN, "Warn log");
-  // log(LOG_ERR, " Err  log");
-  // log(LOG_OKAY, "Okay log");
-  // screen_draw_demo();
-  // kernel_panic("Test");
 }

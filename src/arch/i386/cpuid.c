@@ -1,5 +1,5 @@
 #include <arch/i386/cpuid.h>
-#include <lib/libc/printf.h>
+#include <printf.h>
 #include <string.h>
 
 bool cpuid_is_supported(void) {
