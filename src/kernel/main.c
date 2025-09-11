@@ -41,7 +41,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   terminal_init(&g_terminal);
   gdt_init();
   idt_init();
-  pit_init(10);
+  pit_init(100);
   sti();
   pmm_init(multiboot_info);
   vmm_init();

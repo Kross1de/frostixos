@@ -94,6 +94,22 @@ kernel_status_t vmm_map_page(u32 virt_addr, u32 phys_addr, u32 flags) {
   return KERNEL_OK;
 }
 
+kernel_status_t vmm_map_pages(u32 virt_addr, u32 phys_addr, u32 count,
+                              u32 flags) {
+  for (u32 i = 0; i < count; i++) {
+    u32 v = virt_addr + i * PAGE_SIZE;
+    u32 p = phys_addr + i * PAGE_SIZE;
+    kernel_status_t status = vmm_map_page(v, p, flags);
+    if (status != KERNEL_OK) {
+      for (u32 j = 0; j < i; j++) {
+        vmm_unmap_page(virt_addr + j * PAGE_SIZE);
+      }
+      return status;
+    }
+  }
+  return KERNEL_OK;
+}
+
 kernel_status_t vmm_unmap_page(u32 virt_addr) {
   u32 pd_index = virt_addr >> 22;
   u32 pt_index = (virt_addr >> 12) & 0x3FF;
@@ -121,6 +137,37 @@ kernel_status_t vmm_unmap_page(u32 virt_addr) {
 
   __asm__ volatile("invlpg (%0)" : : "r"(virt_addr) : "memory");
 
+  return KERNEL_OK;
+}
+
+kernel_status_t vmm_unmap_pages(u32 virt_addr, u32 count) {
+  for (u32 i = 0; i < count; i++) {
+    kernel_status_t status = vmm_unmap_page(virt_addr + i * PAGE_SIZE);
+    if (status != KERNEL_OK) {
+      return status;
+    }
+  }
+
+  if (is_paging_enabled()) {
+    u32 *pd = (u32 *)PAGE_RECURSIVE_PD;
+    for (u32 i = 0; i < count; i++) {
+      u32 pd_index = (virt_addr + i * PAGE_SIZE) >> 22;
+      u32 *pt = (u32 *)(PAGE_RECURSIVE_PT_BASE + (pd_index << 12));
+      bool empty = true;
+      for (u32 j = 0; j < PAGE_TABLE_ENTRIES; j++) {
+        if (pt[j] & PAGE_FLAG_PRESENT) {
+          empty = false;
+          break;
+        }
+      }
+      if (empty && (pd[pd_index] & PAGE_FLAG_PRESENT)) {
+        u32 pt_phys = pd[pd_index] & ~0xFFF;
+        pd[pd_index] = 0;
+        pmm_free_page(pt_phys);
+        __asm__ volatile("invlpg (%0)" : : "r"((u32)pt) : "memory");
+      }
+    }
+  }
   return KERNEL_OK;
 }
 

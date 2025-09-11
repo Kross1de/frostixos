@@ -52,6 +52,29 @@ static void mark_region_allocated(u64 start, u64 len) {
   }
 }
 
+static u32 bitmap_find_free_bits(u32 count) {
+  if (count == 0)
+    return (u32)-1;
+
+  u32 found = 0;
+  for (u32 byte = 0; byte < g_physical_allocator.size; byte++) {
+    if (g_physical_allocator.bits[byte] == 0xFF)
+      continue;
+
+    for (u32 bit = 0; bit < 8; bit++) {
+      if (bitmap_test_bit(byte * 8 + bit)) {
+        found = 0;
+        continue;
+      }
+      found++;
+      if (found == count) {
+        return (byte * 8 + bit + 1 - count);
+      }
+    }
+  }
+  return (u32)-1;
+}
+
 kernel_status_t pmm_init(multiboot_info_t *mb_info) {
   if (!(mb_info->flags & MULTIBOOT_INFO_MEM_MAP)) {
     return KERNEL_ERROR;
@@ -130,6 +153,22 @@ u32 pmm_alloc_page(void) {
   return bit * PAGE_SIZE;
 }
 
+u32 pmm_alloc_pages(u32 count) {
+  if (g_physical_allocator.free_pages < count) {
+    return 0;
+  }
+  u32 start_bit = bitmap_find_free_bits(count);
+  if (start_bit == (u32)-1) {
+    return 0;
+  }
+  for (u32 i = 0; i < count; i++) {
+    bitmap_set_bit(start_bit + i);
+  }
+  g_physical_allocator.free_pages -= count;
+  g_physical_allocator.used_pages += count;
+  return start_bit * PAGE_SIZE;
+}
+
 void pmm_free_page(u32 addr) {
   if (addr == 0)
     return;
@@ -138,6 +177,21 @@ void pmm_free_page(u32 addr) {
     bitmap_clear_bit(bit);
     g_physical_allocator.free_pages++;
     g_physical_allocator.used_pages--;
+  }
+}
+
+void pmm_free_pages(u32 addr, u32 count) {
+  if (addr == 0 || count == 0)
+    return;
+
+  u32 start_bit = addr / PAGE_SIZE;
+  for (u32 i = 0; i < count; i++) {
+    u32 bit = start_bit + i;
+    if (bitmap_test_bit(bit)) {
+      bitmap_clear_bit(bit);
+      g_physical_allocator.free_pages++;
+      g_physical_allocator.used_pages--;
+    }
   }
 }
 

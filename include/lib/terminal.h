@@ -19,6 +19,8 @@ typedef struct {
 extern terminal_t g_terminal;
 
 void terminal_init(terminal_t *term);
+void terminal_draw_cursor(terminal_t *term);
+void terminal_toggle_cursor(terminal_t *term);
 void terminal_putchar(terminal_t *term, char c);
 void terminal_print(terminal_t *term, const char *str);
 void terminal_clear(terminal_t *term);

@@ -18,6 +18,9 @@ extern page_directory_t kernel_page_directory;
 kernel_status_t vmm_init(void);
 kernel_status_t vmm_map_page(u32 virt_addr, u32 phys_addr, u32 flags);
 kernel_status_t vmm_unmap_page(u32 virt_addr);
+kernel_status_t vmm_map_pages(u32 virt_addr, u32 phys_addr, u32 count,
+                              u32 flags);
+kernel_status_t vmm_unmap_pages(u32 virt_addr, u32 count);
 u32 vmm_get_physical_addr(u32 virt_addr);
 void vmm_switch_directory(page_directory_t *dir);
 void vmm_enable_paging(void);

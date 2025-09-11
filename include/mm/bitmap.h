@@ -19,5 +19,7 @@ u32 pmm_alloc_page(void);
 void pmm_free_page(u32 addr);
 u32 pmm_get_total_pages(void);
 u32 pmm_get_free_pages(void);
+u32 pmm_alloc_pages(u32 count);
+void pmm_free_pages(u32 addr, u32 count);
 
 #endif // MM_BITMAP_H
