@@ -133,6 +133,8 @@ typedef struct {
   u8 green_field_position;
   u8 blue_mask_size;
   u8 blue_field_position;
+  u8 rsvd_mask_size;
+  u8 rsvd_field_position;
 
   vbe_control_info_t control_info;
   vbe_mode_info_t mode_info;
@@ -183,6 +185,10 @@ kernel_status_t vbe_draw_horizontal_line(u16 x, u16 y, u16 width,
                                          vbe_color_t color);
 kernel_status_t vbe_draw_vertical_line(u16 x, u16 y, u16 height,
                                        vbe_color_t color);
+
+kernel_status_t vbe_draw_circle(u16 x, u16 y, u16 radius, vbe_color_t color);
+kernel_status_t vbe_draw_text(u16 x, u16 y, const char *text, vbe_color_t color,
+                              u8 scale);
 
 kernel_status_t vbe_show_info(void);
 kernel_status_t vbe_list_modes(void);

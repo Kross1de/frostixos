@@ -25,7 +25,8 @@ typedef enum {
   KERNEL_ERROR = -1,
   KERNEL_INVALID_PARAM = -2,
   KERNEL_OUT_OF_MEMORY = -3,
-  KERNEL_NOT_IMPLEMENTED = -4
+  KERNEL_NOT_IMPLEMENTED = -4,
+  KERNEL_ALREADY_MAPPED = -5
 } kernel_status_t;
 
 #define ALIGN_UP(addr, align) (((addr) + (align) - 1) & ~((align) - 1))

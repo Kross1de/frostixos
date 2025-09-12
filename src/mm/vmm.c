@@ -1,4 +1,5 @@
 #include <drivers/vbe.h>
+#include <kernel/kernel.h>
 #include <misc/logger.h>
 #include <mm/bitmap.h>
 #include <mm/vmm.h>
@@ -10,6 +11,10 @@ page_directory_t kernel_page_directory;
 #define PAGE_RECURSIVE_SLOT 1023
 #define PAGE_RECURSIVE_PD 0xFFFFF000
 #define PAGE_RECURSIVE_PT_BASE 0xFFC00000
+
+static inline void tlb_invlpg(u32 va) {
+  __asm__ volatile("invlpg (%0)" ::"r"(va) : "memory");
+}
 
 static bool is_paging_enabled(void) {
   u32 cr0;
@@ -100,7 +105,7 @@ kernel_status_t vmm_init(void) {
 
   vmm_switch_directory(&kernel_page_directory);
   vmm_enable_paging();
-  log(LOG_INFO, "VMM: paging enabled");
+  log(LOG_OKAY, "VMM: paging enabled");
   return KERNEL_OK;
 }
 
@@ -114,23 +119,28 @@ kernel_status_t vmm_map_page(u32 virt_addr, u32 phys_addr, u32 flags) {
       u32 pt_phys = pmm_alloc_page();
       if (!pt_phys)
         return KERNEL_OUT_OF_MEMORY;
-      pd[pd_index] = pt_phys | PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
-      u32 *pt = (u32 *)(PAGE_RECURSIVE_PT_BASE + (pd_index << 12));
-      memset(pt, 0, PAGE_SIZE);
+      pd[pd_index] = (pt_phys & ~0xFFF) | PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
+      memset((void *)(PAGE_RECURSIVE_PT_BASE + (pd_index << 12)), 0, PAGE_SIZE);
     }
     u32 *pt = (u32 *)(PAGE_RECURSIVE_PT_BASE + (pd_index << 12));
-    pt[pt_index] = (phys_addr & ~0xFFF) | flags;
+    u32 newpte = (phys_addr & ~0xFFF) | (flags & PTE_FLAGS_MASK);
+    if ((pt[pt_index] & PAGE_FLAG_PRESENT) &&
+        ((pt[pt_index] & ~0xFFF) != (phys_addr & ~0xFFF))) {
+      return KERNEL_ALREADY_MAPPED;
+    }
+    pt[pt_index] = newpte;
+    tlb_invlpg(virt_addr);
   } else {
     if (!(kernel_page_directory[pd_index] & PAGE_FLAG_PRESENT)) {
       u32 pt_phys = pmm_alloc_page();
       if (!pt_phys)
         return KERNEL_OUT_OF_MEMORY;
       kernel_page_directory[pd_index] =
-          pt_phys | PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
-      memset((void *)(kernel_page_directory[pd_index] & ~0xFFF), 0, PAGE_SIZE);
+          (pt_phys & ~0xFFF) | PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
+      memset((void *)(pt_phys), 0, PAGE_SIZE);
     }
     u32 *pt = (u32 *)(kernel_page_directory[pd_index] & ~0xFFF);
-    pt[pt_index] = (phys_addr & ~0xFFF) | flags;
+    pt[pt_index] = (phys_addr & ~0xFFF) | (flags & PTE_FLAGS_MASK);
   }
   return KERNEL_OK;
 }

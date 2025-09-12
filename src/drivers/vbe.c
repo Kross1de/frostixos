@@ -285,3 +285,30 @@ kernel_status_t vbe_list_modes(void) {
   }
   return KERNEL_OK;
 }
+
+kernel_status_t vbe_draw_circle(u16 cx, u16 cy, u16 radius, vbe_color_t color) {
+  if (!g_device.initialized)
+    return KERNEL_ERROR;
+  int x = radius;
+  int y = 0;
+  int err = 0;
+
+  while (x >= y) {
+    vbe_put_pixel(cx + x, cy + y, color);
+    vbe_put_pixel(cx + y, cy + x, color);
+    vbe_put_pixel(cx - y, cy + x, color);
+    vbe_put_pixel(cx - x, cy + y, color);
+    vbe_put_pixel(cx - x, cy - y, color);
+    vbe_put_pixel(cx - y, cy - x, color);
+    vbe_put_pixel(cx + y, cy - x, color);
+    vbe_put_pixel(cx + x, cy - y, color);
+
+    y += 1;
+    err += 1 + 2 * y;
+    if (2 * (err - x) + 1 > 0) {
+      x -= 1;
+      err += 1 - 2 * x;
+    }
+  }
+  return KERNEL_OK;
+}

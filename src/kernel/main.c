@@ -12,6 +12,7 @@
 #include <lib/terminal.h>
 #include <misc/logger.h>
 #include <mm/bitmap.h>
+#include <mm/heap.h>
 #include <mm/vmm.h>
 #include <printf.h>
 
@@ -45,6 +46,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   sti();
   pmm_init(multiboot_info);
   vmm_init();
+  heap_init();
   printf("Welcome to FrostixOS!\n");
   cpuid_init();
   cpuid_get_vendor(&vendor);
@@ -54,5 +56,9 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
          features.eax, features.ebx, features.ecx, features.edx);
   cpuid_get_extended(&extended);
   printf("CPU Brand: %s\n", extended.brand_string);
-  vbe_show_info();
+  void *test = kmalloc(1024);
+  if (test != NULL) {
+    memset(test, 0, 1024);
+    kfree(test);
+  }
 }

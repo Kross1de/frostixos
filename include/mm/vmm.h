@@ -9,6 +9,11 @@
 #define PAGE_FLAG_PRESENT (1 << 0)
 #define PAGE_FLAG_RW (1 << 1)
 #define PAGE_FLAG_USER (1 << 2)
+#define PAGE_FLAG_GLOBAL (1 << 8)
+
+#ifndef PTE_FLAGS_MASK
+#define PTE_FLAGS_MASK (PAGE_FLAG_PRESENT | PAGE_FLAG_RW | PAGE_FLAG_USER)
+#endif
 
 typedef u32 page_directory_t[PAGE_DIR_ENTRIES] __attribute__((aligned(4096)));
 typedef u32 page_table_t[PAGE_TABLE_ENTRIES] __attribute__((aligned(4096)));
