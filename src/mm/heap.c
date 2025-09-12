@@ -1,5 +1,5 @@
 #include <kernel/kernel.h>
-#include <misc/logger.h> // Added for logging
+#include <misc/logger.h>
 #include <mm/bitmap.h>
 #include <mm/heap.h>
 #include <mm/vmm.h>
