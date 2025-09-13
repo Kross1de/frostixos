@@ -187,8 +187,6 @@ kernel_status_t vbe_draw_vertical_line(u16 x, u16 y, u16 height,
                                        vbe_color_t color);
 
 kernel_status_t vbe_draw_circle(u16 x, u16 y, u16 radius, vbe_color_t color);
-kernel_status_t vbe_draw_text(u16 x, u16 y, const char *text, vbe_color_t color,
-                              u8 scale);
 
 kernel_status_t vbe_show_info(void);
 kernel_status_t vbe_list_modes(void);

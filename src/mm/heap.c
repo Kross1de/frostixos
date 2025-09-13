@@ -6,10 +6,13 @@
 
 struct heap_block {
   struct heap_block *next;
+  struct heap_block *prev;
   size_t size;
   bool free;
+  u32 magic;
 };
 
+#define HEAP_MAGIC 0xDEADBEEF
 #define HEAP_START 0xD0000000
 #define INITIAL_HEAP_SIZE (4 * 1024 * 1024)
 #define HEAP_ALIGN(size) ALIGN_UP(size, 4)
@@ -44,6 +47,8 @@ static kernel_status_t heap_expand(size_t additional_size) {
   new_block->size = additional_size - sizeof(struct heap_block);
   new_block->free = true;
   new_block->next = NULL;
+  new_block->prev = NULL;
+  new_block->magic = HEAP_MAGIC;
 
   log(LOG_INFO, "Created new block at 0x%x, size: %u, free: %d", (u32)new_block,
       new_block->size, new_block->free);
@@ -57,6 +62,7 @@ static kernel_status_t heap_expand(size_t additional_size) {
       last = last->next;
     }
     last->next = new_block;
+    new_block->prev = last;
     log(LOG_INFO, "Linked new block at 0x%x to last block at 0x%x",
         (u32)new_block, (u32)last);
   }
@@ -91,7 +97,8 @@ void *kmalloc(size_t size) {
 
   struct heap_block *current = heap_head;
   while (current != NULL) {
-    if (current->free && current->size >= size) {
+    if (current->free && current->size >= size &&
+        current->magic == HEAP_MAGIC) {
       log(LOG_INFO, "Found free block at 0x%x, size: %u", (u32)current,
           current->size);
       if (current->size > size + sizeof(struct heap_block)) {
@@ -99,9 +106,14 @@ void *kmalloc(size_t size) {
             (struct heap_block *)((u8 *)current + sizeof(struct heap_block) +
                                   size);
         new_block->next = current->next;
+        new_block->prev = current;
         new_block->size = current->size - size - sizeof(struct heap_block);
         new_block->free = true;
+        new_block->magic = HEAP_MAGIC;
         current->next = new_block;
+        if (new_block->next) {
+          new_block->next->prev = new_block;
+        }
         current->size = size;
         log(LOG_INFO, "Split block at 0x%x, new block at 0x%x, size: %u",
             (u32)current, (u32)new_block, new_block->size);
@@ -138,27 +150,36 @@ void kfree(void *ptr) {
   log(LOG_INFO, "kfree called for block at 0x%x (ptr: 0x%x)", (u32)block,
       (u32)ptr);
 
+  if (block->magic != HEAP_MAGIC) {
+    log(LOG_ERR, "Invalid heap block at 0x%x", (u32)block);
+    return;
+  }
+
   if (!block->free) {
     block->free = true;
     log(LOG_INFO, "Marked block at 0x%x as free, size: %u", (u32)block,
         block->size);
 
-    if (block->next != NULL && block->next->free) {
+    if (block->next != NULL && block->next->free &&
+        block->next->magic == HEAP_MAGIC) {
       block->size += sizeof(struct heap_block) + block->next->size;
       block->next = block->next->next;
+      if (block->next) {
+        block->next->prev = block;
+      }
       log(LOG_INFO, "Merged block at 0x%x with next, new size: %u", (u32)block,
           block->size);
     }
 
-    struct heap_block *current = heap_head;
-    while (current != NULL && current->next != block) {
-      current = current->next;
-    }
-    if (current != NULL && current->free) {
-      current->size += sizeof(struct heap_block) + block->size;
-      current->next = block->next;
+    if (block->prev != NULL && block->prev->free &&
+        block->prev->magic == HEAP_MAGIC) {
+      block->prev->size += sizeof(struct heap_block) + block->size;
+      block->prev->next = block->next;
+      if (block->next) {
+        block->next->prev = block->prev;
+      }
       log(LOG_INFO, "Merged block at 0x%x with previous at 0x%x, new size: %u",
-          (u32)block, (u32)current, current->size);
+          (u32)block, (u32)block->prev, block->prev->size);
     }
   } else {
     log(LOG_WARN, "Attempted to free already free block at 0x%x", (u32)block);
