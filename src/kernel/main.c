@@ -56,9 +56,13 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
          features.eax, features.ebx, features.ecx, features.edx);
   cpuid_get_extended(&extended);
   printf("CPU Brand: %s\n", extended.brand_string);
-  void *test = kmalloc(1024);
+  heap_get_total_size();
+  heap_get_free_size();
+  void *test = kcalloc(10, 1024);
   if (test != NULL) {
-    memset(test, 0, 1024);
+    test = krealloc(test, 2048);
     kfree(test);
   }
+  heap_get_total_size();
+  heap_get_free_size();
 }
