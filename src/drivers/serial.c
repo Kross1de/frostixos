@@ -7,6 +7,13 @@
 static int serial_is_transmit_empty(void) {
   return inb(SERIAL_PORT + 5) & 0x20;
 }
+void serial_set_ansi_fg(vbe_color_t color) {
+  serial_printf("\x1b[38;2;%u;%u;%um", color.red, color.green, color.blue);
+}
+
+void serial_set_ansi_bg(vbe_color_t color) {
+  serial_printf("\x1b[48;2;%u;%u;%um", color.red, color.green, color.blue);
+}
 
 kernel_status_t serial_init(void) {
   outb(SERIAL_PORT + 1, 0x00);

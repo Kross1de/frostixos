@@ -6,6 +6,8 @@
 #include <kernel/kernel.h>
 #include <lib/font.h>
 
+typedef enum { ANSI_NORMAL, ANSI_ESC, ANSI_CSI } ansi_state_t;
+
 typedef struct {
   u16 col;
   u16 row;
@@ -14,6 +16,13 @@ typedef struct {
   vbe_color_t fg_color;
   vbe_color_t bg_color;
   const font_t *font;
+
+  ansi_state_t state;
+  int ansi_private;
+  char ansi_buf[64];
+  int ansi_buf_idx;
+  int ansi_params[16];
+  int ansi_param_count;
 } terminal_t;
 
 extern terminal_t g_terminal;

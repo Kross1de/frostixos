@@ -37,6 +37,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
 
   vga_text_init();
   serial_init();
+  cpuid_init();
   vbe_init();
   font_init();
   terminal_init(&g_terminal);
@@ -47,8 +48,9 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   pmm_init(multiboot_info);
   vmm_init();
   heap_init();
+
   printf("Welcome to FrostixOS!\n");
-  cpuid_init();
+
   cpuid_get_vendor(&vendor);
   printf("CPU Vendor: %s\n", vendor.vendor);
   cpuid_get_features(&features);
@@ -56,6 +58,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
          features.eax, features.ebx, features.ecx, features.edx);
   cpuid_get_extended(&extended);
   printf("CPU Brand: %s\n", extended.brand_string);
+
   heap_get_total_size();
   heap_get_free_size();
   void *test = kcalloc(10, 1024);
@@ -65,4 +68,6 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   }
   heap_get_total_size();
   heap_get_free_size();
+
+  printf("\x1b[32mGreen text\x1b[0m\n");
 }

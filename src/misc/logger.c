@@ -16,28 +16,24 @@ void log(log_level_t level, const char *fmt, ...) {
   vsnprintf(buf, sizeof(buf), fmt, va);
   va_end(va);
 
-  vbe_color_t original_color = g_terminal.fg_color;
+  const char *color_code;
   switch (level) {
   case LOG_INFO:
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_CYAN);
+    color_code = "\x1b[36m";
     break;
   case LOG_WARN:
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_YELLOW);
+    color_code = "\x1b[33m";
     break;
   case LOG_ERR:
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_RED);
+    color_code = "\x1b[31m";
     break;
   case LOG_OKAY:
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_GREEN);
+    color_code = "\x1b[32m";
     break;
   default:
-    terminal_set_fg_color(&g_terminal, VBE_COLOR_WHITE);
+    color_code = "\x1b[37m";
     break;
   }
 
-  printf("[%s] ", level_str[level]);
-  terminal_set_fg_color(&g_terminal, VBE_COLOR_WHITE);
-  printf("%s\n", buf);
-
-  terminal_set_fg_color(&g_terminal, original_color);
+  printf("%s[%s] \x1b[37m%s\n", color_code, level_str[level], buf);
 }

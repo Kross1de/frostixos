@@ -50,7 +50,8 @@ static kernel_status_t heap_expand(size_t additional_size) {
   new_block->prev = NULL;
   new_block->magic = HEAP_MAGIC;
 
-  log(LOG_INFO, "Created new block at 0x%x, size: %u", (u32)new_block, new_block->size);
+  log(LOG_INFO, "Created new block at 0x%x, size: %u", (u32)new_block,
+      new_block->size);
 
   if (heap_head == NULL) {
     heap_head = new_block;
@@ -100,9 +101,12 @@ void *kmalloc(size_t size) {
 
   struct heap_block *current = heap_head;
   while (current != NULL) {
-    if (current->free && current->size >= size && current->magic == HEAP_MAGIC) {
+    if (current->free && current->size >= size &&
+        current->magic == HEAP_MAGIC) {
       if (current->size > size + sizeof(struct heap_block)) {
-        struct heap_block *new_block = (struct heap_block *)((u8 *)current + sizeof(struct heap_block) + size);
+        struct heap_block *new_block =
+            (struct heap_block *)((u8 *)current + sizeof(struct heap_block) +
+                                  size);
         new_block->next = current->next;
         new_block->prev = current;
         new_block->size = current->size - size - sizeof(struct heap_block);
@@ -116,7 +120,8 @@ void *kmalloc(size_t size) {
       }
 
       current->free = false;
-      log(LOG_INFO, "Allocated block at 0x%x, size: %u", (u32)current, current->size);
+      log(LOG_INFO, "Allocated block at 0x%x, size: %u", (u32)current,
+          current->size);
       return (void *)((u8 *)current + sizeof(struct heap_block));
     }
     current = current->next;
@@ -126,9 +131,12 @@ void *kmalloc(size_t size) {
 
   current = heap_head;
   while (current != NULL) {
-    if (current->free && current->size >= size && current->magic == HEAP_MAGIC) {
+    if (current->free && current->size >= size &&
+        current->magic == HEAP_MAGIC) {
       if (current->size > size + sizeof(struct heap_block)) {
-        struct heap_block *new_block = (struct heap_block *)((u8 *)current + sizeof(struct heap_block) + size);
+        struct heap_block *new_block =
+            (struct heap_block *)((u8 *)current + sizeof(struct heap_block) +
+                                  size);
         new_block->next = current->next;
         new_block->prev = current;
         new_block->size = current->size - size - sizeof(struct heap_block);
@@ -142,7 +150,8 @@ void *kmalloc(size_t size) {
       }
 
       current->free = false;
-      log(LOG_INFO, "Allocated block at 0x%x, size: %u", (u32)current, current->size);
+      log(LOG_INFO, "Allocated block at 0x%x, size: %u", (u32)current,
+          current->size);
       return (void *)((u8 *)current + sizeof(struct heap_block));
     }
     current = current->next;
@@ -180,7 +189,8 @@ void *krealloc(void *ptr, size_t new_size) {
     return NULL;
   }
 
-  struct heap_block *block = (struct heap_block *)((u8 *)ptr - sizeof(struct heap_block));
+  struct heap_block *block =
+      (struct heap_block *)((u8 *)ptr - sizeof(struct heap_block));
   if (block->magic != HEAP_MAGIC || block->free) {
     log(LOG_ERR, "krealloc invalid block at 0x%x", (u32)block);
     return NULL;
@@ -225,7 +235,8 @@ void kfree(void *ptr) {
     return;
   }
 
-  struct heap_block *block = (struct heap_block *)((u8 *)ptr - sizeof(struct heap_block));
+  struct heap_block *block =
+      (struct heap_block *)((u8 *)ptr - sizeof(struct heap_block));
   if (block->magic != HEAP_MAGIC) {
     log(LOG_ERR, "Invalid heap block at 0x%x", (u32)block);
     return;
@@ -234,7 +245,8 @@ void kfree(void *ptr) {
   if (!block->free) {
     block->free = true;
 
-    if (block->next != NULL && block->next->free && block->next->magic == HEAP_MAGIC) {
+    if (block->next != NULL && block->next->free &&
+        block->next->magic == HEAP_MAGIC) {
       block->size += sizeof(struct heap_block) + block->next->size;
       block->next = block->next->next;
       if (block->next) {
@@ -242,7 +254,8 @@ void kfree(void *ptr) {
       }
     }
 
-    if (block->prev != NULL && block->prev->free && block->prev->magic == HEAP_MAGIC) {
+    if (block->prev != NULL && block->prev->free &&
+        block->prev->magic == HEAP_MAGIC) {
       block->prev->size += sizeof(struct heap_block) + block->size;
       block->prev->next = block->next;
       if (block->next) {
