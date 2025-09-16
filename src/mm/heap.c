@@ -215,6 +215,7 @@ size_t heap_get_total_size(void) {
     total += current->size + sizeof(struct heap_block);
     current = current->next;
   }
+  log(LOG_INFO, "Total heap size: %u bytes", total);
   return total;
 }
 
@@ -227,6 +228,7 @@ size_t heap_get_free_size(void) {
     }
     current = current->next;
   }
+  log(LOG_INFO, "Free heap size: %u bytes", free_size);
   return free_size;
 }
 

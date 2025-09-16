@@ -258,8 +258,7 @@ void terminal_putchar(terminal_t *term, char c) {
     } else if (c == '?') {
       term->ansi_private = 1;
       return;
-    } else if ((c >= 'A' && c <= 'Z') ||
-               (c >= 'a' && c <= 'z')) {
+    } else if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
       term->ansi_buf[term->ansi_buf_idx] = '\0';
       term->ansi_params[term->ansi_param_count++] =
           (term->ansi_buf_idx > 0 ? atoi(term->ansi_buf) : 0);

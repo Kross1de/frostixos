@@ -5,6 +5,7 @@
 #include <arch/i386/pic.h>
 #include <arch/i386/pit.h>
 #include <drivers/serial.h>
+#include <drivers/time.h>
 #include <drivers/vbe.h>
 #include <drivers/vga_text.h>
 #include <kernel/kernel.h>
@@ -48,10 +49,11 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   pmm_init(multiboot_info);
   vmm_init();
   heap_init();
+  time_init();
 
   printf("Welcome to FrostixOS!\n");
 
-  cpuid_get_vendor(&vendor);
+  /* cpuid_get_vendor(&vendor);
   printf("CPU Vendor: %s\n", vendor.vendor);
   cpuid_get_features(&features);
   printf("CPU Features - EAX: 0x%x, EBX: 0x%x, ECX: 0x%x, EDX: 0x%x\n",
@@ -59,15 +61,11 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   cpuid_get_extended(&extended);
   printf("CPU Brand: %s\n", extended.brand_string);
 
-  heap_get_total_size();
-  heap_get_free_size();
   void *test = kcalloc(10, 1024);
   if (test != NULL) {
     test = krealloc(test, 2048);
     kfree(test);
   }
   heap_get_total_size();
-  heap_get_free_size();
-
-  printf("\x1b[32mGreen text\x1b[0m\n");
+  heap_get_free_size(); */
 }

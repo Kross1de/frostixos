@@ -1,10 +1,17 @@
 #include <arch/i386/isr.h>
 #include <arch/i386/pic.h>
 #include <arch/i386/pit.h>
+#include <drivers/time.h>
 #include <lib/terminal.h>
 
 static void pit_handler(registers_t *regs) {
   UNUSED(regs);
+  g_ticks++;
+
+  if (g_ticks % pit_frequensy == 0) {
+    time_update();
+  }
+
   outb(0x20, 0x20);
 }
 

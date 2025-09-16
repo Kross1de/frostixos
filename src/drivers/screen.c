@@ -5,32 +5,17 @@
 
 void screen_draw_rect(u16 x, u16 y, u16 width, u16 height, vbe_color_t fill,
                       vbe_color_t border) {
-  if (!vbe_is_available()) {
-    return;
-  }
-  if (x + width > screen_get_width() || y + height > screen_get_height()) {
-    return;
-  }
   vbe_fill_rect(x, y, width, height, fill);
   vbe_draw_rect(x, y, width, height, border);
 }
 
 void screen_draw_string(u16 x, u16 y, const char *str, vbe_color_t fg,
                         vbe_color_t bg) {
-  if (!vbe_is_available() || !str) {
-    return;
-  }
-  if (x >= screen_get_width() || y >= screen_get_height()) {
-    return;
-  }
   font_render_string(str, x, y, fg, bg, font_get_default());
 }
 
 void screen_draw_string_centered(u16 y, const char *str, vbe_color_t fg,
                                  vbe_color_t bg) {
-  if (!vbe_is_available() || !str) {
-    return;
-  }
   const font_t *font = font_get_default();
   size_t len = strlen(str);
   u16 screen_width = screen_get_width();
@@ -44,9 +29,6 @@ void screen_draw_string_centered(u16 y, const char *str, vbe_color_t fg,
 
 void screen_draw_string_wrapped(u16 x, u16 y, u16 max_width, const char *str,
                                 vbe_color_t fg, vbe_color_t bg) {
-  if (!vbe_is_available() || !str) {
-    return;
-  }
   const font_t *font = font_get_default();
   u16 current_x = x;
   u16 current_y = y;
@@ -91,12 +73,9 @@ void screen_draw_string_wrapped(u16 x, u16 y, u16 max_width, const char *str,
 }
 
 void screen_draw_demo(void) {
-  if (!vbe_is_available()) {
-    return;
-  }
   screen_clear(VBE_COLOR_BLACK);
   screen_draw_rect(400, 100, 200, 100, VBE_COLOR_DARK_GRAY, VBE_COLOR_WHITE);
-  screen_draw_string_centered(120, "FrostixOS VBE Demo", VBE_COLOR_WHITE,
+  screen_draw_string_centered(140, "FrostixOS VBE Demo", VBE_COLOR_WHITE,
                               VBE_COLOR_DARK_GRAY);
 
   vbe_draw_line(400, 210, 600, 210, VBE_COLOR_RED);
@@ -112,17 +91,9 @@ void screen_draw_demo(void) {
   }
 }
 
-void screen_clear(vbe_color_t color) {
-  if (!vbe_is_available()) {
-    return;
-  }
-  vbe_clear_screen(color);
-}
+void screen_clear(vbe_color_t color) { vbe_clear_screen(color); }
 
 void screen_put_pixel(u16 x, u16 y, vbe_color_t color) {
-  if (!vbe_is_available() || x >= screen_get_width() || y >= screen_get_height()) {
-    return;
-  }
   vbe_put_pixel(x, y, color);
 }
 
@@ -142,9 +113,6 @@ u8 screen_get_bpp(void) {
 }
 
 void screen_scroll(u16 lines, vbe_color_t bg_color) {
-  if (!vbe_is_available()) {
-    return;
-  }
   vbe_device_t *dev = vbe_get_device();
   if (!dev || lines == 0 || lines >= dev->height) {
     return;
@@ -156,12 +124,7 @@ void screen_scroll(u16 lines, vbe_color_t bg_color) {
   vbe_fill_rect(0, dev->height - lines, dev->width, lines, bg_color);
 }
 
-kernel_status_t screen_draw_circle(u16 x, u16 y, u16 radius, vbe_color_t color) {
-  if (!vbe_is_available()) {
-    return KERNEL_ERROR;
-  }
-  if (x + radius > screen_get_width() || y + radius > screen_get_height()) {
-    return KERNEL_INVALID_PARAM;
-  }
+kernel_status_t screen_draw_circle(u16 x, u16 y, u16 radius,
+                                   vbe_color_t color) {
   return vbe_draw_circle(x, y, radius, color);
 }
