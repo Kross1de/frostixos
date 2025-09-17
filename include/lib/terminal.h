@@ -16,7 +16,6 @@ typedef struct {
   vbe_color_t fg_color;
   vbe_color_t bg_color;
   const font_t *font;
-
   ansi_state_t state;
   int ansi_private;
   char ansi_buf[64];
@@ -37,5 +36,7 @@ void terminal_set_fg_color(terminal_t *term, vbe_color_t color);
 void terminal_set_bg_color(terminal_t *term, vbe_color_t color);
 void terminal_set_bgfg(terminal_t *term, vbe_color_t bg_color,
                        vbe_color_t fg_color);
+void terminal_get_cursor(terminal_t *term, int *row, int *col);
+void terminal_set_cursor(terminal_t *term, int row, int col);
 
-#endif // LIB_TERMINAL_H
+#endif

@@ -68,4 +68,9 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   }
   heap_get_total_size();
   heap_get_free_size(); */
+
+  for (;;) {
+    draw_status();
+    asm volatile("hlt");
+  }
 }

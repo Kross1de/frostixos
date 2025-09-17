@@ -102,64 +102,63 @@ vbe_color_t vbe_pixel_to_color(u32 pixel) {
       ((pixel >> g_device.blue_field_position) & b_mask) * 255 / b_mask;
   color.alpha = ((pixel >> g_device.mode_info.rsvd_field_position) & a_mask) *
                 255 / a_mask;
-
   return color;
 }
 
 kernel_status_t vbe_put_pixel(u16 x, u16 y, vbe_color_t color) {
   if (!g_device.initialized || x >= g_device.width || y >= g_device.height) {
-    return KERNEL_INVALID_PARAM;
+    return KERNEL_ERROR;
   }
-  if (g_device.bpp < 15) {
-    return KERNEL_NOT_IMPLEMENTED;
-  }
-
   u8 *fb = vbe_get_framebuffer();
-  size_t offset = (size_t)y * g_device.pitch + (size_t)x * (g_device.bpp / 8);
+  u32 offset = y * g_device.pitch + x * (g_device.bpp / 8);
   u32 pixel = vbe_color_to_pixel(color);
-
   switch (g_device.bpp) {
+  case 8:
+    *(u8 *)(fb + offset) = (u8)pixel;
+    break;
   case 15:
   case 16:
     *(u16 *)(fb + offset) = (u16)pixel;
     break;
   case 24:
-    fb[offset + 0] = (pixel >> 0) & 0xFF;
-    fb[offset + 1] = (pixel >> 8) & 0xFF;
-    fb[offset + 2] = (pixel >> 16) & 0xFF;
+    *(u8 *)(fb + offset) = (u8)(pixel & 0xFF);
+    *(u8 *)(fb + offset + 1) = (u8)((pixel >> 8) & 0xFF);
+    *(u8 *)(fb + offset + 2) = (u8)((pixel >> 16) & 0xFF);
     break;
   case 32:
     *(u32 *)(fb + offset) = pixel;
     break;
   default:
-    return KERNEL_NOT_IMPLEMENTED;
+    return KERNEL_ERROR;
   }
   return KERNEL_OK;
 }
 
 vbe_color_t vbe_get_pixel(u16 x, u16 y) {
+  vbe_color_t color = {0, 0, 0, 0};
   if (!g_device.initialized || x >= g_device.width || y >= g_device.height) {
-    return VBE_COLOR_BLACK;
+    return color;
   }
-  if (g_device.bpp < 15) {
-    return VBE_COLOR_BLACK; // not supported
-  }
-
   u8 *fb = vbe_get_framebuffer();
-  size_t offset = (size_t)y * g_device.pitch + (size_t)x * (g_device.bpp / 8);
+  u32 offset = y * g_device.pitch + x * (g_device.bpp / 8);
   u32 pixel = 0;
-
   switch (g_device.bpp) {
+  case 8:
+    pixel = *(u8 *)(fb + offset);
+    break;
   case 15:
   case 16:
     pixel = *(u16 *)(fb + offset);
     break;
   case 24:
-    pixel = fb[offset + 0] | (fb[offset + 1] << 8) | (fb[offset + 2] << 16);
+    pixel = *(u8 *)(fb + offset) | (*(u8 *)(fb + offset + 1) << 8) |
+            (*(u8 *)(fb + offset + 2) << 16);
     break;
   case 32:
     pixel = *(u32 *)(fb + offset);
     break;
+  default:
+    return color;
   }
   return vbe_pixel_to_color(pixel);
 }
@@ -169,9 +168,9 @@ kernel_status_t vbe_fill_rect(u16 x, u16 y, u16 width, u16 height,
   if (!g_device.initialized) {
     return KERNEL_ERROR;
   }
-  for (u16 dy = 0; dy < height; ++dy) {
-    for (u16 dx = 0; dx < width; ++dx) {
-      if (vbe_put_pixel(x + dx, y + dy, color) != KERNEL_OK) {
+  for (u16 py = y; py < y + height; ++py) {
+    for (u16 px = x; px < x + width; ++px) {
+      if (vbe_put_pixel(px, py, color) != KERNEL_OK) {
         return KERNEL_ERROR;
       }
     }
@@ -309,6 +308,25 @@ kernel_status_t vbe_draw_circle(u16 cx, u16 cy, u16 radius, vbe_color_t color) {
       x -= 1;
       err += 1 - 2 * x;
     }
+  }
+  return KERNEL_OK;
+}
+
+kernel_status_t vbe_blit(u16 dst_x, u16 dst_y, u16 src_x, u16 src_y, u16 width,
+                         u16 height) {
+  if (!g_device.initialized) {
+    return KERNEL_ERROR;
+  }
+  if (dst_x + width > g_device.width || dst_y + height > g_device.height ||
+      src_x + width > g_device.width || src_y + height > g_device.height) {
+    return KERNEL_INVALID_PARAM;
+  }
+  u8 *fb = vbe_get_framebuffer();
+  u32 bpp_bytes = g_device.bpp / 8;
+  for (u16 i = 0; i < height; ++i) {
+    void *src_ptr = fb + (src_y + i) * g_device.pitch + src_x * bpp_bytes;
+    void *dst_ptr = fb + (dst_y + i) * g_device.pitch + dst_x * bpp_bytes;
+    memmove(dst_ptr, src_ptr, width * bpp_bytes);
   }
   return KERNEL_OK;
 }

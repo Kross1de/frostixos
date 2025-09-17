@@ -190,5 +190,7 @@ kernel_status_t vbe_draw_circle(u16 x, u16 y, u16 radius, vbe_color_t color);
 
 kernel_status_t vbe_show_info(void);
 kernel_status_t vbe_list_modes(void);
+kernel_status_t vbe_blit(u16 dst_x, u16 dst_y, u16 src_x, u16 src_y, u16 width,
+                         u16 height);
 
 #endif // DRIVERS_VBE_H

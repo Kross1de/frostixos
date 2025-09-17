@@ -13,8 +13,9 @@ typedef struct {
 } time_t;
 
 extern u64 g_ticks;
-extern const u32 pit_frequensy;
+extern const u32 pit_frequency;
 
+void draw_status(void);
 void time_init(void);
 void time_update(void);
 time_t time_get_current(void);

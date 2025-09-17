@@ -8,7 +8,7 @@ static void pit_handler(registers_t *regs) {
   UNUSED(regs);
   g_ticks++;
 
-  if (g_ticks % pit_frequensy == 0) {
+  if (g_ticks % pit_frequency == 0) {
     time_update();
   }
 

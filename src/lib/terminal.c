@@ -1,8 +1,14 @@
 #include <drivers/serial.h>
 #include <kernel/kernel.h>
 #include <lib/terminal.h>
+#include <string.h>
 
 static bool cursor_visible = true;
+
+// Forward declarations
+static void handle_ansi_command(terminal_t *term, char cmd);
+static int isdigit(char c);
+static int atoi(const char *str);
 
 static int isdigit(char c) { return (c >= '0' && c <= '9'); }
 
@@ -38,7 +44,7 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
 
   if (cmd == 'A') {
     int n = (term->ansi_param_count > 0 ? term->ansi_params[0] : 1);
-    term->row = MAX(0, (int)term->row - n);
+    term->row = (term->row > n) ? term->row - n : 0;
   } else if (cmd == 'B') {
     int n = (term->ansi_param_count > 0 ? term->ansi_params[0] : 1);
     term->row = MIN(term->max_rows - 1, term->row + n);
@@ -47,7 +53,7 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
     term->col = MIN(term->max_cols - 1, term->col + n);
   } else if (cmd == 'D') {
     int n = (term->ansi_param_count > 0 ? term->ansi_params[0] : 1);
-    term->col = MAX(0, (int)term->col - n);
+    term->col = (term->col > n) ? term->col - n : 0;
   } else if (cmd == 'H') {
     int row = (term->ansi_param_count > 0 ? term->ansi_params[0] : 1);
     int col = (term->ansi_param_count > 1 ? term->ansi_params[1] : 1);
@@ -57,26 +63,28 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
     int mode = (term->ansi_param_count > 0 ? term->ansi_params[0] : 0);
     u16 font_w = term->font->width;
     u16 font_h = term->font->height;
-    u16 screen_w = term->max_cols * font_w;
+    u16 screen_w = screen_get_width();
+    u16 screen_h = screen_get_height();
+
     if (mode == 2) {
-      vbe_clear_screen(term->bg_color);
+      vbe_fill_rect(0, font_h, screen_w, screen_h - font_h, term->bg_color);
       term->col = 0;
       term->row = 0;
     } else if (mode == 0) {
-      vbe_fill_rect(term->col * font_w, term->row * font_h,
+      vbe_fill_rect(term->col * font_w, (term->row + 1) * font_h,
                     (term->max_cols - term->col) * font_w, font_h,
                     term->bg_color);
       if (term->row < term->max_rows - 1) {
-        vbe_fill_rect(0, (term->row + 1) * font_h, screen_w,
+        vbe_fill_rect(0, (term->row + 2) * font_h, screen_w,
                       (term->max_rows - term->row - 1) * font_h,
                       term->bg_color);
       }
     } else if (mode == 1) {
       if (term->row > 0) {
-        vbe_fill_rect(0, 0, screen_w, term->row * font_h, term->bg_color);
+        vbe_fill_rect(0, font_h, screen_w, term->row * font_h, term->bg_color);
       }
-      vbe_fill_rect(0, term->row * font_h, (term->col + 1) * font_w, font_h,
-                    term->bg_color);
+      vbe_fill_rect(0, (term->row + 1) * font_h, (term->col + 1) * font_w,
+                    font_h, term->bg_color);
     }
   } else if (cmd == 'K') {
     int mode = (term->ansi_param_count > 0 ? term->ansi_params[0] : 0);
@@ -84,6 +92,7 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
     u16 font_h = term->font->height;
     u16 lx = 0;
     u16 lw = term->max_cols;
+
     if (mode == 0) {
       lx = term->col;
       lw = term->max_cols - term->col;
@@ -94,7 +103,7 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
       lx = 0;
       lw = term->max_cols;
     }
-    vbe_fill_rect(lx * font_w, term->row * font_h, lw * font_w, font_h,
+    vbe_fill_rect(lx * font_w, (term->row + 1) * font_h, lw * font_w, font_h,
                   term->bg_color);
   } else if (cmd == 'm') {
     int i = 0;
@@ -147,32 +156,46 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
 }
 
 void terminal_init(terminal_t *term) {
+  if (!term)
+    return;
+
   term->font = font_get_default();
   if (!term->font) {
-    term->max_cols = screen_get_width() / 8;
-    term->max_rows = screen_get_height() / 16;
-  } else {
-    term->max_cols = screen_get_width() / term->font->width;
-    term->max_rows = screen_get_height() / term->font->height;
+    term->max_cols = 80;
+    term->max_rows = 25;
+    term->col = 0;
+    term->row = 0;
+    term->fg_color = VBE_COLOR_WHITE;
+    term->bg_color = VBE_COLOR_BLACK;
+    term->state = ANSI_NORMAL;
+    return;
   }
+
+  u16 screen_w = screen_get_width();
+  u16 screen_h = screen_get_height();
+  term->max_cols = screen_w / term->font->width;
+  term->max_rows = (screen_h / term->font->height) - 1;
 
   term->col = 0;
   term->row = 0;
   term->fg_color = VBE_COLOR_WHITE;
   term->bg_color = VBE_COLOR_BLACK;
   term->state = ANSI_NORMAL;
+  term->ansi_param_count = 0;
   term->ansi_private = 0;
   term->ansi_buf_idx = 0;
-  term->ansi_param_count = 0;
-  cursor_visible = true;
+
+  terminal_clear(term);
   terminal_draw_cursor(term);
 }
 
 void terminal_draw_cursor(terminal_t *term) {
-  if (!term->font)
+  if (!term || !term->font)
     return;
+
   u16 x = term->col * term->font->width;
-  u16 y = term->row * term->font->height;
+  u16 y = (term->row + 1) * term->font->height;
+
   if (cursor_visible) {
     vbe_fill_rect(x, y, term->font->width, term->font->height, term->fg_color);
   } else {
@@ -181,11 +204,23 @@ void terminal_draw_cursor(terminal_t *term) {
 }
 
 void terminal_toggle_cursor(terminal_t *term) {
+  if (!term)
+    return;
+
   cursor_visible = !cursor_visible;
   terminal_draw_cursor(term);
 }
 
 void terminal_putchar(terminal_t *term, char c) {
+  if (!term)
+    return;
+
+  bool should_toggle = (term->state == ANSI_NORMAL);
+
+  if (should_toggle) {
+    terminal_toggle_cursor(term);
+  }
+
   switch (term->state) {
   case ANSI_NORMAL:
     if (c == '\x1b') {
@@ -193,9 +228,9 @@ void terminal_putchar(terminal_t *term, char c) {
       term->ansi_buf_idx = 0;
       term->ansi_param_count = 0;
       term->ansi_private = 0;
-      return;
+      break;
     }
-    terminal_toggle_cursor(term);
+
     if (c == '\n') {
       term->col = 0;
       term->row++;
@@ -209,7 +244,7 @@ void terminal_putchar(terminal_t *term, char c) {
         term->col = term->max_cols - 1;
       }
       u16 x = term->col * term->font->width;
-      u16 y = term->row * term->font->height;
+      u16 y = (term->row + 1) * term->font->height;
       font_render_char(' ', x, y, term->fg_color, term->bg_color, term->font);
     } else if (c == '\t') {
       term->col = (term->col + 8) & ~7;
@@ -219,7 +254,7 @@ void terminal_putchar(terminal_t *term, char c) {
       }
     } else if (c >= ' ') {
       u16 x = term->col * term->font->width;
-      u16 y = term->row * term->font->height;
+      u16 y = (term->row + 1) * term->font->height;
       font_render_char(c, x, y, term->fg_color, term->bg_color, term->font);
       term->col++;
       if (term->col >= term->max_cols) {
@@ -227,18 +262,23 @@ void terminal_putchar(terminal_t *term, char c) {
         term->row++;
       }
     }
+
     if (term->row >= term->max_rows) {
-      screen_scroll(term->font->height, term->bg_color);
+      u16 font_h = term->font->height;
+      u16 screen_w = screen_get_width();
+      u16 term_h = term->max_rows * font_h;
+      vbe_blit(0, font_h * 2, 0, font_h, screen_w, term_h - font_h);
+      vbe_fill_rect(0, font_h + (term->max_rows * font_h), screen_w, font_h,
+                    term->bg_color);
       term->row = term->max_rows - 1;
     }
-    terminal_toggle_cursor(term);
     break;
 
   case ANSI_ESC:
     if (c == '[') {
       term->state = ANSI_CSI;
       term->ansi_buf_idx = 0;
-      return;
+      break;
     }
     term->state = ANSI_NORMAL;
     break;
@@ -248,44 +288,57 @@ void terminal_putchar(terminal_t *term, char c) {
       if (term->ansi_buf_idx < sizeof(term->ansi_buf) - 1) {
         term->ansi_buf[term->ansi_buf_idx++] = c;
       }
-      return;
     } else if (c == ';') {
       term->ansi_buf[term->ansi_buf_idx] = '\0';
       term->ansi_params[term->ansi_param_count++] =
           (term->ansi_buf_idx > 0 ? atoi(term->ansi_buf) : 0);
       term->ansi_buf_idx = 0;
-      return;
     } else if (c == '?') {
       term->ansi_private = 1;
-      return;
     } else if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
       term->ansi_buf[term->ansi_buf_idx] = '\0';
-      term->ansi_params[term->ansi_param_count++] =
-          (term->ansi_buf_idx > 0 ? atoi(term->ansi_buf) : 0);
+      if (term->ansi_buf_idx > 0) {
+        term->ansi_params[term->ansi_param_count++] = atoi(term->ansi_buf);
+      }
       handle_ansi_command(term, c);
       term->state = ANSI_NORMAL;
-      return;
+    } else {
+      term->state = ANSI_NORMAL;
     }
-    term->state = ANSI_NORMAL;
     break;
+  }
+
+  if (should_toggle) {
+    terminal_toggle_cursor(term);
   }
 }
 
 void terminal_print(terminal_t *term, const char *str) {
+  if (!term || !str)
+    return;
+
   for (const char *p = str; *p != '\0'; ++p) {
     terminal_putchar(term, *p);
   }
 }
 
 void terminal_clear(terminal_t *term) {
+  if (!term)
+    return;
+
   terminal_toggle_cursor(term);
-  screen_clear(term->bg_color);
+  u16 font_h = term->font->height;
+  vbe_fill_rect(0, font_h, screen_get_width(), screen_get_height() - font_h,
+                term->bg_color);
   term->col = 0;
   term->row = 0;
   terminal_toggle_cursor(term);
 }
 
 void terminal_set_fg_color(terminal_t *term, vbe_color_t color) {
+  if (!term)
+    return;
+
   terminal_toggle_cursor(term);
   term->fg_color = color;
   serial_set_ansi_fg(color);
@@ -293,6 +346,9 @@ void terminal_set_fg_color(terminal_t *term, vbe_color_t color) {
 }
 
 void terminal_set_bg_color(terminal_t *term, vbe_color_t color) {
+  if (!term)
+    return;
+
   terminal_toggle_cursor(term);
   term->bg_color = color;
   serial_set_ansi_bg(color);
@@ -303,6 +359,24 @@ void terminal_set_bgfg(terminal_t *term, vbe_color_t bg_color,
                        vbe_color_t fg_color) {
   terminal_set_bg_color(term, bg_color);
   terminal_set_fg_color(term, fg_color);
+}
+
+void terminal_get_cursor(terminal_t *term, int *row, int *col) {
+  if (!term || !row || !col)
+    return;
+
+  *row = term->row;
+  *col = term->col;
+}
+
+void terminal_set_cursor(terminal_t *term, int row, int col) {
+  if (!term)
+    return;
+
+  terminal_toggle_cursor(term);
+  term->row = MIN(MAX(row, 0), term->max_rows - 1);
+  term->col = MIN(MAX(col, 0), term->max_cols - 1);
+  terminal_toggle_cursor(term);
 }
 
 int _putchar(char character) {
