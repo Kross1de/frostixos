@@ -70,25 +70,25 @@ static void rtc_read(time_t *time) {
 }
 
 void draw_status(void) {
-    char buf[32];
-    sprintf(buf, "%04u-%02u-%02u %02u:%02u:%02u", g_current_time.year,
-            g_current_time.month, g_current_time.day, g_current_time.hour,
-            g_current_time.minute, g_current_time.second);
+  char buf[32];
+  sprintf(buf, "%04u-%02u-%02u %02u:%02u:%02u", g_current_time.year,
+          g_current_time.month, g_current_time.day, g_current_time.hour,
+          g_current_time.minute, g_current_time.second);
 
-    const font_t *font = g_terminal.font;
-    u16 font_w = font->width;
-    u16 font_h = font->height;
-    size_t len = strlen(buf);
-    u16 screen_w = screen_get_width();
-    
-    u16 x = screen_w - (len * font_w);
-    u16 y = 0;
+  const font_t *font = g_terminal.font;
+  u16 font_w = font->width;
+  u16 font_h = font->height;
+  size_t len = strlen(buf);
+  u16 screen_w = screen_get_width();
+  u16 screen_h = screen_get_height();
+  u16 y = (screen_h / font_h - 1) * font_h;
+  u16 x = screen_w - (len * font_w);
 
-    vbe_fill_rect(0, y, screen_w, font_h, g_terminal.bg_color);
-    
-    screen_draw_string(x, y, buf, g_terminal.fg_color, g_terminal.bg_color);
+  vbe_fill_rect(x, y, len * font_w, font_h, g_terminal.bg_color);
 
-    g_prev_time = g_current_time;
+  screen_draw_string(x, y, buf, g_terminal.fg_color, g_terminal.bg_color);
+
+  g_prev_time = g_current_time;
 }
 
 void time_init(void) {

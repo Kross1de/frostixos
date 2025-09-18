@@ -5,7 +5,6 @@
 
 static bool cursor_visible = true;
 
-// Forward declarations
 static void handle_ansi_command(terminal_t *term, char cmd);
 static int isdigit(char c);
 static int atoi(const char *str);
@@ -64,27 +63,27 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
     u16 font_w = term->font->width;
     u16 font_h = term->font->height;
     u16 screen_w = screen_get_width();
-    u16 screen_h = screen_get_height();
+    u16 term_h = term->max_rows * font_h;
 
     if (mode == 2) {
-      vbe_fill_rect(0, font_h, screen_w, screen_h - font_h, term->bg_color);
+      vbe_fill_rect(0, 0, screen_w, term_h, term->bg_color);
       term->col = 0;
       term->row = 0;
     } else if (mode == 0) {
-      vbe_fill_rect(term->col * font_w, (term->row + 1) * font_h,
+      vbe_fill_rect(term->col * font_w, term->row * font_h,
                     (term->max_cols - term->col) * font_w, font_h,
                     term->bg_color);
       if (term->row < term->max_rows - 1) {
-        vbe_fill_rect(0, (term->row + 2) * font_h, screen_w,
+        vbe_fill_rect(0, (term->row + 1) * font_h, screen_w,
                       (term->max_rows - term->row - 1) * font_h,
                       term->bg_color);
       }
     } else if (mode == 1) {
       if (term->row > 0) {
-        vbe_fill_rect(0, font_h, screen_w, term->row * font_h, term->bg_color);
+        vbe_fill_rect(0, 0, screen_w, term->row * font_h, term->bg_color);
       }
-      vbe_fill_rect(0, (term->row + 1) * font_h, (term->col + 1) * font_w,
-                    font_h, term->bg_color);
+      vbe_fill_rect(0, term->row * font_h, (term->col + 1) * font_w, font_h,
+                    term->bg_color);
     }
   } else if (cmd == 'K') {
     int mode = (term->ansi_param_count > 0 ? term->ansi_params[0] : 0);
@@ -103,7 +102,7 @@ static void handle_ansi_command(terminal_t *term, char cmd) {
       lx = 0;
       lw = term->max_cols;
     }
-    vbe_fill_rect(lx * font_w, (term->row + 1) * font_h, lw * font_w, font_h,
+    vbe_fill_rect(lx * font_w, term->row * font_h, lw * font_w, font_h,
                   term->bg_color);
   } else if (cmd == 'm') {
     int i = 0;
@@ -194,7 +193,7 @@ void terminal_draw_cursor(terminal_t *term) {
     return;
 
   u16 x = term->col * term->font->width;
-  u16 y = (term->row + 1) * term->font->height;
+  u16 y = term->row * term->font->height;
 
   if (cursor_visible) {
     vbe_fill_rect(x, y, term->font->width, term->font->height, term->fg_color);
@@ -244,7 +243,7 @@ void terminal_putchar(terminal_t *term, char c) {
         term->col = term->max_cols - 1;
       }
       u16 x = term->col * term->font->width;
-      u16 y = (term->row + 1) * term->font->height;
+      u16 y = term->row * term->font->height;
       font_render_char(' ', x, y, term->fg_color, term->bg_color, term->font);
     } else if (c == '\t') {
       term->col = (term->col + 8) & ~7;
@@ -254,7 +253,7 @@ void terminal_putchar(terminal_t *term, char c) {
       }
     } else if (c >= ' ') {
       u16 x = term->col * term->font->width;
-      u16 y = (term->row + 1) * term->font->height;
+      u16 y = term->row * term->font->height;
       font_render_char(c, x, y, term->fg_color, term->bg_color, term->font);
       term->col++;
       if (term->col >= term->max_cols) {
@@ -267,8 +266,8 @@ void terminal_putchar(terminal_t *term, char c) {
       u16 font_h = term->font->height;
       u16 screen_w = screen_get_width();
       u16 term_h = term->max_rows * font_h;
-      vbe_blit(0, font_h * 2, 0, font_h, screen_w, term_h - font_h);
-      vbe_fill_rect(0, font_h + (term->max_rows * font_h), screen_w, font_h,
+      vbe_blit(0, 0, 0, font_h, screen_w, term_h - font_h);
+      vbe_fill_rect(0, (term->max_rows - 1) * font_h, screen_w, font_h,
                     term->bg_color);
       term->row = term->max_rows - 1;
     }
@@ -328,7 +327,7 @@ void terminal_clear(terminal_t *term) {
 
   terminal_toggle_cursor(term);
   u16 font_h = term->font->height;
-  vbe_fill_rect(0, font_h, screen_get_width(), screen_get_height() - font_h,
+  vbe_fill_rect(0, 0, screen_get_width(), term->max_rows * font_h,
                 term->bg_color);
   term->col = 0;
   term->row = 0;
