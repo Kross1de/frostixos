@@ -4,6 +4,7 @@
 #include <misc/logger.h>
 #include <mm/vmm.h>
 #include <printf.h>
+#include <string.h>
 
 extern u32 _multiboot_info_ptr;
 

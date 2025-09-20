@@ -1,6 +1,7 @@
 #include <drivers/vga_text.h>
 #include <kernel/kernel.h>
 #include <stdarg.h>
+#include <string.h>
 
 #define VGA_MEMORY 0xB8000
 

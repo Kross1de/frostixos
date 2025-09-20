@@ -4,6 +4,7 @@
 #include <kernel/kernel.h>
 #include <lib/terminal.h>
 #include <printf.h>
+#include <string.h>
 
 time_t g_current_time;
 u64 g_ticks = 0;

@@ -3,6 +3,7 @@
 #include <mm/bitmap.h>
 #include <mm/heap.h>
 #include <mm/vmm.h>
+#include <string.h>
 
 struct heap_block {
   struct heap_block *next;

@@ -4,6 +4,7 @@
 #include <misc/logger.h>
 #include <mm/bitmap.h>
 #include <printf.h>
+#include <string.h>
 
 bitmap_allocator_t g_physical_allocator = {0};
 

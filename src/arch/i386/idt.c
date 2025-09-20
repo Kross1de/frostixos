@@ -1,5 +1,6 @@
 #include <arch/i386/idt.h>
 #include <arch/i386/pic.h>
+#include <string.h>
 
 static idt_entry_t idt[IDT_ENTRIES];
 static idt_ptr_t idtp;

@@ -1,4 +1,5 @@
 #include <arch/i386/gdt.h>
+#include <string.h>
 #include <kernel/kernel.h>
 
 static gdt_entry_t gdt_entries[GDT_MAX_ENTRIES];

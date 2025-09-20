@@ -1,4 +1,4 @@
-#include <kernel/kernel.h>
+#include "string.h"
 
 size_t strlen(const char *str) {
   if (!str) {
@@ -52,7 +52,7 @@ char *strcpy(char *dest, const char *src) {
   char *original_dest = dest;
 
   while ((*dest++ = *src++)) {
-    ////////////////////////
+    // nothing
   }
 
   return original_dest;
