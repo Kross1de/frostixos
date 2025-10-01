@@ -99,24 +99,31 @@ void time_init(void) {
 }
 
 void time_update(void) {
-  g_current_time.second++;
-  if (g_current_time.second >= 60) {
-    g_current_time.second = 0;
-    g_current_time.minute++;
-    if (g_current_time.minute >= 60) {
-      g_current_time.minute = 0;
-      g_current_time.hour++;
-      if (g_current_time.hour >= 24) {
-        g_current_time.hour = 0;
-        rtc_read(&g_current_time);
+  g_ticks++;
+
+  static u64 last_second_tick = 0;
+  if (g_ticks - last_second_tick >= pit_frequency) {
+    last_second_tick = g_ticks;
+
+    g_current_time.second++;
+    if (g_current_time.second >= 60) {
+      g_current_time.second = 0;
+      g_current_time.minute++;
+      if (g_current_time.minute >= 60) {
+        g_current_time.minute = 0;
+        g_current_time.hour++;
+        if (g_current_time.hour >= 24) {
+          g_current_time.hour = 0;
+          rtc_read(&g_current_time);
+        }
       }
     }
-  }
 
-  static u8 last_second = 255;
-  if (last_second != g_current_time.second) {
-    draw_status();
-    last_second = g_current_time.second;
+    static u8 last_second = 255;
+    if (last_second != g_current_time.second) {
+      draw_status();
+      last_second = g_current_time.second;
+    }
   }
 }
 

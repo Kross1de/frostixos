@@ -53,7 +53,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
 
   printf("Welcome to FrostixOS!\n");
 
-  /* cpuid_get_vendor(&vendor);
+  cpuid_get_vendor(&vendor);
   printf("CPU Vendor: %s\n", vendor.vendor);
   cpuid_get_features(&features);
   printf("CPU Features - EAX: 0x%x, EBX: 0x%x, ECX: 0x%x, EDX: 0x%x\n",
@@ -67,7 +67,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
       kfree(test);
   }
   heap_get_total_size();
-  heap_get_free_size(); */
+  heap_get_free_size();
 
   for (;;) {
     draw_status();

@@ -9,6 +9,10 @@ void serial_write_char(char c);
 void serial_write_string(const char *s);
 int serial_printf(const char *fmt, ...);
 
+// Input
+int serial_read_ready(void);
+int serial_read_char(void); // blocks until a character is available
+
 void serial_set_ansi_fg(vbe_color_t color);
 void serial_set_ansi_bg(vbe_color_t color);
 

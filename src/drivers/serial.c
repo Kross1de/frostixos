@@ -7,6 +7,9 @@
 static int serial_is_transmit_empty(void) {
   return inb(SERIAL_PORT + 5) & 0x20;
 }
+
+static int serial_is_data_ready(void) { return inb(SERIAL_PORT + 5) & 0x01; }
+
 void serial_set_ansi_fg(vbe_color_t color) {
   serial_printf("\x1b[38;2;%u;%u;%um", color.red, color.green, color.blue);
 }
@@ -44,6 +47,14 @@ void serial_write_string(const char *s) {
   while (*s) {
     serial_write_char(*s++);
   }
+}
+
+int serial_read_ready(void) { return serial_is_data_ready() ? 1 : 0; }
+
+int serial_read_char(void) {
+  while (!serial_is_data_ready())
+    ;
+  return (int)inb(SERIAL_PORT);
 }
 
 static void serial_out(char c, void *arg) {

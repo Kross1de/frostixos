@@ -2,24 +2,12 @@
 #include <kernel/kernel.h>
 #include <lib/terminal.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdlib.h>
 
 static bool cursor_visible = true;
 
 static void handle_ansi_command(terminal_t *term, char cmd);
-static int isdigit(char c);
-static int atoi(const char *str);
-
-static int isdigit(char c) { return (c >= '0' && c <= '9'); }
-
-static int atoi(const char *str) {
-  int res = 0;
-  for (int i = 0; str[i] != '\0'; ++i) {
-    if (isdigit(str[i])) {
-      res = res * 10 + (str[i] - '0');
-    }
-  }
-  return res;
-}
 
 static vbe_color_t ansi_colors[8] = {
     VBE_COLOR_BLACK, VBE_COLOR_RED,     VBE_COLOR_GREEN, VBE_COLOR_YELLOW,
