@@ -1,18 +1,16 @@
-#include "ctype.h"
 #include "stdlib.h"
+#include "ctype.h"
 
 int atoi(const char *nptr) {
   if (!nptr) {
     return 0;
   }
 
-  // Skip leading whitespace
   const char *s = nptr;
   while (isspace((unsigned char)*s)) {
     s++;
   }
 
-  // Handle optional sign
   int sign = 1;
   if (*s == '+') {
     s++;

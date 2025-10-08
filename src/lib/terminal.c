@@ -1,9 +1,9 @@
+#include <ctype.h>
 #include <drivers/serial.h>
 #include <kernel/kernel.h>
 #include <lib/terminal.h>
-#include <string.h>
-#include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 
 static bool cursor_visible = true;
 

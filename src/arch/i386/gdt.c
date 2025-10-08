@@ -1,6 +1,6 @@
 #include <arch/i386/gdt.h>
-#include <string.h>
 #include <kernel/kernel.h>
+#include <string.h>
 
 static gdt_entry_t gdt_entries[GDT_MAX_ENTRIES];
 static gdt_ptr_t gdt_ptr;
