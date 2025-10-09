@@ -130,38 +130,65 @@ static void acpi_parse_fadt(fadt_t *fadt) {
     return;
   }
 
-  if (address_space_id == 1 && pm1a_cnt_addr != 0) {
-    uint16_t pm1_cnt = inw((uint16_t)pm1a_cnt_addr);
-    if (pm1_cnt & 0x1) {
-      log(LOG_INFO, "ACPI: Already enabled (SCI_EN set).");
-      return;
-    }
-
-    if (fadt->smi_cmd == 0) {
-      log(LOG_WARN, "ACPI: SMI_CMD invalid (zero); cannot enable.");
-      return;
-    }
-
-    outb(fadt->smi_cmd, fadt->acpi_enable);
-    log(LOG_INFO,
-        "ACPI: Enable command sent to SMI_CMD (0x%x) with value 0x%x.",
-        fadt->smi_cmd, fadt->acpi_enable);
-
-    uint32_t timeout = 1000000;
-    while (timeout--) {
-      pm1_cnt = inw((uint16_t)pm1a_cnt_addr);
+  if (pm1a_cnt_addr != 0) {
+    if (address_space_id == 1) {
+      uint16_t pm1_cnt = inw((uint16_t)pm1a_cnt_addr);
       if (pm1_cnt & 0x1) {
-        log(LOG_INFO, "ACPI: Successfully enabled (SCI_EN set).");
+        log(LOG_INFO, "ACPI: Already enabled (SCI_EN set).");
         return;
       }
+
+      if (fadt->smi_cmd == 0) {
+        log(LOG_WARN, "ACPI: SMI_CMD invalid (zero); cannot enable.");
+        return;
+      }
+
+      outb(fadt->smi_cmd, fadt->acpi_enable);
+      log(LOG_INFO,
+          "ACPI: Enable command sent to SMI_CMD (0x%x) with value 0x%x.",
+          fadt->smi_cmd, fadt->acpi_enable);
+
+      uint32_t timeout = 1000000;
+      while (timeout--) {
+        pm1_cnt = inw((uint16_t)pm1a_cnt_addr);
+        if (pm1_cnt & 0x1) {
+          log(LOG_INFO, "ACPI: Successfully enabled (SCI_EN set).");
+          return;
+        }
+      }
+      log(LOG_ERR, "ACPI: Failed to enable (SCI_EN not set after timeout).");
+    } else if (address_space_id == 0) {
+      volatile uint16_t *pm1_cnt_ptr = (volatile uint16_t *)pm1a_cnt_addr;
+      uint16_t pm1_cnt = *pm1_cnt_ptr;
+      if (pm1_cnt & 0x1) {
+        log(LOG_INFO, "ACPI: Already enabled (SCI_EN set).");
+        return;
+      }
+
+      if (fadt->smi_cmd == 0) {
+        log(LOG_WARN, "ACPI: SMI_CMD invalid (zero); cannot enable.");
+        return;
+      }
+
+      outb(fadt->smi_cmd, fadt->acpi_enable);
+      log(LOG_INFO,
+          "ACPI: Enable command sent to SMI_CMD (0x%x) with value 0x%x.",
+          fadt->smi_cmd, fadt->acpi_enable);
+
+      uint32_t timeout = 1000000;
+      while (timeout--) {
+        pm1_cnt = *pm1_cnt_ptr;
+        if (pm1_cnt & 0x1) {
+          log(LOG_INFO, "ACPI: Successfully enabled (SCI_EN set).");
+          return;
+        }
+      }
+      log(LOG_ERR, "ACPI: Failed to enable (SCI_EN not set after timeout).");
+    } else {
+      log(LOG_WARN, "ACPI: Unsupported address space ID; enabling skipped.");
     }
-    log(LOG_ERR, "ACPI: Failed to enable (SCI_EN not set after timeout).");
-  } else if (address_space_id == 0 && pm1a_cnt_addr != 0) {
-    log(LOG_WARN,
-        "ACPI: PM1_CNT in Memory space not supported; enabling skipped.");
   } else {
-    log(LOG_WARN,
-        "ACPI: PM1_CNT not in I/O space or address invalid; enabling skipped.");
+    log(LOG_WARN, "ACPI: PM1_CNT address invalid; enabling skipped.");
   }
 }
 
