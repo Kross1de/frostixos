@@ -63,14 +63,6 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   cpuid_get_extended(&extended);
   printf("CPU Brand: %s\n", extended.brand_string);
 
-  void *test = kcalloc(10, 1024);
-  if (test != NULL) {
-    test = krealloc(test, 2048);
-    kfree(test);
-  }
-  heap_get_total_size();
-  heap_get_free_size();
-
   for (;;) {
     draw_status();
     asm volatile("hlt");
