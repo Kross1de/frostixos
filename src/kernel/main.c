@@ -45,12 +45,12 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   terminal_init(&g_terminal);
   gdt_init();
   idt_init();
-  acpi_init();
   pit_init(100);
   sti();
   pmm_init(multiboot_info);
   vmm_init();
   heap_init();
+  acpi_init();
   time_init();
 
   printf("Welcome to FrostixOS!\n");

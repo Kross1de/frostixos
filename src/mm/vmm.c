@@ -59,6 +59,24 @@ kernel_status_t vmm_init(void) {
     }
   }
 
+  u32 low_pt_phys;
+  if (!(kernel_page_directory[0] & PAGE_FLAG_PRESENT)) {
+    low_pt_phys = pmm_alloc_page();
+    if (low_pt_phys == 0)
+      return KERNEL_OUT_OF_MEMORY;
+    kernel_page_directory[0] = low_pt_phys | PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
+    memset((void *)low_pt_phys, 0, PAGE_SIZE);
+  } else {
+    low_pt_phys = kernel_page_directory[0] & ~0xFFF;
+  }
+
+  u32 *low_pt = (u32 *)low_pt_phys;
+  for (u32 i = 0; i < 256; i++) {
+    if (!(low_pt[i] & PAGE_FLAG_PRESENT)) {
+      low_pt[i] = (i * PAGE_SIZE) | PAGE_FLAG_PRESENT | PAGE_FLAG_RW;
+    }
+  }
+
   extern u32 _multiboot_info_ptr;
   multiboot_info_t *mbi = (multiboot_info_t *)_multiboot_info_ptr;
   if (mbi && (mbi->flags & (1 << 11))) {
@@ -217,6 +235,32 @@ kernel_status_t vmm_unmap_pages(u32 virt_addr, u32 count) {
         pmm_free_page(pt_phys);
         __asm__ volatile("invlpg (%0)" : : "r"((u32)pt) : "memory");
       }
+    }
+  }
+  return KERNEL_OK;
+}
+
+kernel_status_t vmm_map_if_not_mapped(u32 phys_start, u32 size) {
+  u32 start = ALIGN_DOWN(phys_start, PAGE_SIZE);
+  u32 end = ALIGN_UP(phys_start + size, PAGE_SIZE);
+  u32 num_pages = (end - start) / PAGE_SIZE;
+
+  for (u32 i = 0; i < num_pages; i++) {
+    u32 va = start + i * PAGE_SIZE;
+    u32 pa = va;
+
+    u32 current_phys = vmm_get_physical_addr(va);
+    if (current_phys == 0) {
+      kernel_status_t status = vmm_map_page(
+          va, pa, PAGE_FLAG_PRESENT | PAGE_FLAG_RW | PAGE_FLAG_GLOBAL);
+      if (status != KERNEL_OK)
+        return status;
+    } else if (current_phys != pa) {
+      log(LOG_ERR,
+          "VMM: Mapping conflict at virt 0x%x (mapped to phys 0x%x, expected "
+          "0x%x)",
+          va, current_phys, pa);
+      return KERNEL_INVALID_PARAM;
     }
   }
   return KERNEL_OK;
