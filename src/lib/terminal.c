@@ -272,7 +272,7 @@ void terminal_putchar(terminal_t *term, char c) {
 
   case ANSI_CSI:
     if (isdigit(c)) {
-      if (term->ansi_buf_idx < sizeof(term->ansi_buf) - 1) {
+      if (term->ansi_buf_idx < (int)(sizeof(term->ansi_buf) - 1)) {
         term->ansi_buf[term->ansi_buf_idx++] = c;
       }
     } else if (c == ';') {

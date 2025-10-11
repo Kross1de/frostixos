@@ -37,7 +37,7 @@ static u8 acpi_checksum(const void *table, u32 length) {
 
 rsdp_t *acpi_find_rsdp(void) {
   // search EBDA
-  u16 ebda_seg = *((const u16 *)EBDA_BASE);
+  u16 ebda_seg = *(volatile const u16 *)EBDA_BASE;
   u32 ebda_addr = (u32)ebda_seg << 4;
   for (u32 ptr = ebda_addr; ptr < ebda_addr + EBDA_SIZE; ptr += ALIGNMENT_16) {
     if (memcmp((const void *)ptr, RSDP_SIGNATURE, RSDP_SIGNATURE_LEN) == 0) {
@@ -208,6 +208,350 @@ static void acpi_parse_fadt(fadt_t *fadt) {
   log(LOG_ERR, "ACPI: Failed to enable (SCI_EN not set after timeout).");
 }
 
+static void acpi_parse_madt(madt_t *madt) {
+  if (madt == NULL) {
+    log(LOG_ERR, "ACPI: MADT parsing failed - table not found.");
+    return;
+  }
+
+  u8 *ptr = (u8 *)madt + sizeof(sdt_header_t) + 8;
+  u8 *end = (u8 *)madt + madt->header.length;
+  u32 entry_count = 0;
+
+  log(LOG_INFO, "ACPI: Parsing MADT entries (LAPIC Addr: 0x%x, Flags: 0x%x)",
+      madt->local_apic_addr, madt->flags);
+
+  while (ptr + 1 < end) {
+    u8 type = *ptr;
+    u8 length = *(ptr + 1);
+
+    if (length < 2 || ptr + length > end) {
+      log(LOG_WARN,
+          "ACPI: Invalid MADT entry at offset 0x%lx (type: %u, len: %u); "
+          "stopping parse.",
+          (uintptr_t)(ptr - (u8 *)madt), type, length);
+      break;
+    }
+
+    switch (type) {
+    case 0:
+      if (length >= 8) {
+        u8 processor_id = *(ptr + 2);
+        u8 apic_id = *(ptr + 3);
+        u32 flags = *(u32 *)(ptr + 4);
+        log(LOG_INFO,
+            "  MADT Entry %u: LAPIC (Proc ID: %u, APIC ID: %u, Flags: 0x%x)",
+            entry_count, processor_id, apic_id, flags);
+      }
+      break;
+    case 1:
+      if (length >= 12) {
+        u8 ioapic_id = *(ptr + 2);
+        u32 address = *(u32 *)(ptr + 4);
+        u32 gsi_base = *(u32 *)(ptr + 8);
+        log(LOG_INFO,
+            "  MADT Entry %u: I/O APIC (ID: %u, Addr: 0x%x, GSI BASE: %u)",
+            entry_count, ioapic_id, address, gsi_base);
+      }
+      break;
+    case 2:
+      if (length >= 10) {
+        u8 bus = *(ptr + 2);
+        u8 source = *(ptr + 3);
+        u32 gsi = *(u32 *)(ptr + 4);
+        u16 flags = *(u16 *)(ptr + 8);
+        log(LOG_INFO,
+            "  MADT Entry %u: IRQ Source Override (Bus: %u, Source: %u, GSI: "
+            "%u, Flags: 0x%x)",
+            entry_count, bus, source, gsi, flags);
+      }
+      break;
+    case 3:
+      if (length >= 10) {
+        u8 nmi_source = *(ptr + 2);
+        u8 reserved = *(ptr + 3);
+        u16 flags = *(u16 *)(ptr + 4);
+        u32 gsi = *(u32 *)(ptr + 6);
+        log(LOG_INFO,
+            "  MADT Entry %u: I/O APIC NMI (Source: %u, Reserved: 0x%x, Flags: "
+            "0x%x, GSI: %u)",
+            entry_count, nmi_source, reserved, flags, gsi);
+      }
+      break;
+    case 4:
+      if (length >= 6) {
+        u8 processor_id = *(ptr + 2);
+        u16 flags = *(u16 *)(ptr + 3);
+        u8 lint = *(ptr + 5);
+        log(LOG_INFO,
+            "  MADT Entry %u: Local APIC NMI (Proc ID: %u, Flags: 0x%x, LINT: "
+            "%u)",
+            entry_count, processor_id, flags, lint);
+      }
+      break;
+    case 5:
+      if (length >= 12) {
+        u16 reserved = *(u16 *)(ptr + 2);
+        u64 address = *(u64 *)(ptr + 4);
+        log(LOG_INFO,
+            "  MADT Entry %u: Local APIC Addr Override (Reserved: 0x%x, Addr: "
+            "0x%llx)",
+            entry_count, reserved, address);
+      }
+      break;
+    case 6:
+      if (length >= 16) {
+        u8 io_sapic_id = *(ptr + 2);
+        u8 reserved = *(ptr + 3);
+        u32 gsi_base = *(u32 *)(ptr + 4);
+        u64 address = *(u64 *)(ptr + 8);
+        log(LOG_INFO,
+            "  MADT Entry %u: I/O SAPIC (ID: %u, Reserved: 0x%x, GSI BASE: %u, "
+            "Addr: 0x%llx)",
+            entry_count, io_sapic_id, reserved, gsi_base, address);
+      }
+      break;
+    case 7:
+      if (length >= 16) {
+        u8 processor_id = *(ptr + 2);
+        u8 sapic_id = *(ptr + 3);
+        u8 sapic_eid = *(ptr + 4);
+        u32 flags = *(u32 *)(ptr + 5);
+        u32 uid_value = *(u32 *)(ptr + 9);
+        log(LOG_INFO,
+            "  MADT Entry %u: Local SAPIC (Proc ID: %u, SAPIC ID: %u, EID: %u, "
+            "Flags: 0x%x, UID Value: %u)",
+            entry_count, processor_id, sapic_id, sapic_eid, flags, uid_value);
+      }
+      break;
+    case 8:
+      if (length >= 16) {
+        u16 flags = *(u16 *)(ptr + 2);
+        u8 interrupt_type = *(ptr + 4);
+        u8 processor_id = *(ptr + 5);
+        u8 processor_eid = *(ptr + 6);
+        u8 io_sapic_vector = *(ptr + 7);
+        u32 gsi = *(u32 *)(ptr + 8);
+        u32 platform_flags = *(u32 *)(ptr + 12);
+        log(LOG_INFO,
+            "  MADT Entry %u: Platform Int Src (Flags: 0x%x, Type: %u, Proc "
+            "ID: %u, EID: %u, Vector: %u, GSI: %u, Plat Flags: 0x%x)",
+            entry_count, flags, interrupt_type, processor_id, processor_eid,
+            io_sapic_vector, gsi, platform_flags);
+      }
+      break;
+    case 9:
+      if (length >= 16) {
+        u16 reserved = *(u16 *)(ptr + 2);
+        u32 x2apic_id = *(u32 *)(ptr + 4);
+        u32 flags = *(u32 *)(ptr + 8);
+        u32 acpi_id = *(u32 *)(ptr + 12);
+        log(LOG_INFO,
+            "  MADT Entry %u: Local x2APIC (Reserved: 0x%x, x2APIC ID: %u, "
+            "Flags: 0x%x, ACPI ID: %u)",
+            entry_count, reserved, x2apic_id, flags, acpi_id);
+      }
+      break;
+    case 10:
+      if (length >= 12) {
+        u16 flags = *(u16 *)(ptr + 2);
+        u32 acpi_processor_uid = *(u32 *)(ptr + 4);
+        u8 lint = *(ptr + 8);
+        u8 reserved = *(ptr + 9);
+        log(LOG_INFO,
+            "  MADT Entry %u: Local x2APIC NMI (Flags: 0x%x, ACPI UID: %u, "
+            "LINT: %u, Reserved: 0x%x)",
+            entry_count, flags, acpi_processor_uid, lint, reserved);
+      }
+      break;
+    case 11:
+      if (length >= 82) {
+        u32 cpu_interface_number = *(u32 *)(ptr + 2);
+        u32 acpi_processor_uid = *(u32 *)(ptr + 6);
+        u32 flags = *(u32 *)(ptr + 10);
+        u32 parking_protocol_version = *(u32 *)(ptr + 14);
+        u32 performance_interrupt_gsiv = *(u32 *)(ptr + 18);
+        u64 parked_address = *(u64 *)(ptr + 22);
+        u64 physical_base_address = *(u64 *)(ptr + 30);
+        u64 gicv = *(u64 *)(ptr + 38);
+        u64 gich = *(u64 *)(ptr + 46);
+        u32 vgic_maintenance_interrupt = *(u32 *)(ptr + 54);
+        u64 gicr_base_address = *(u64 *)(ptr + 58);
+        u64 mpidr = *(u64 *)(ptr + 66);
+        u8 processor_power_efficiency_class = *(ptr + 74);
+        u16 spe_overflow_interrupt = *(u16 *)(ptr + 75);
+        u16 trbe_interrupt = *(u16 *)(ptr + 77);
+        log(LOG_INFO,
+            "  MADT Entry %u: GICC (CPU If Num: %u, UID: %u, Flags: 0x%x, "
+            "Parking Ver: %u, Perf GSIV: %u, Parked Addr: 0x%llx, Phys Base: "
+            "0x%llx, GICV: 0x%llx, GICH: 0x%llx, VGIC Maint: %u, GICR Base: "
+            "0x%llx, MPIDR: 0x%llx, Pwr Eff Class: %u, SPE GSIV: %u, TRBE "
+            "GSIV: %u)",
+            entry_count, cpu_interface_number, acpi_processor_uid, flags,
+            parking_protocol_version, performance_interrupt_gsiv,
+            parked_address, physical_base_address, gicv, gich,
+            vgic_maintenance_interrupt, gicr_base_address, mpidr,
+            processor_power_efficiency_class, spe_overflow_interrupt,
+            trbe_interrupt);
+      }
+      break;
+    case 12:
+      if (length >= 24) {
+        u32 gic_id = *(u32 *)(ptr + 2);
+        u64 physical_base_address = *(u64 *)(ptr + 6);
+        u8 gic_version = *(ptr + 14);
+        log(LOG_INFO,
+            "  MADT Entry %u: GICD (GIC ID: %u, Phys Base: 0x%llx, Version: "
+            "%u)",
+            entry_count, gic_id, physical_base_address, gic_version);
+      }
+      break;
+    case 13:
+      if (length >= 24) {
+        u32 msi_frame_id = *(u32 *)(ptr + 2);
+        u64 physical_base_address = *(u64 *)(ptr + 6);
+        u32 flags = *(u32 *)(ptr + 14);
+        u16 spi_count = *(u16 *)(ptr + 18);
+        u16 spi_base = *(u16 *)(ptr + 20);
+        log(LOG_INFO,
+            "  MADT Entry %u: GIC MSI Frame (ID: %u, Phys Base: 0x%llx, Flags: "
+            "0x%x, SPI Count: %u, SPI Base: %u)",
+            entry_count, msi_frame_id, physical_base_address, flags, spi_count,
+            spi_base);
+      }
+      break;
+    case 14:
+      if (length >= 16) {
+        u64 discovery_range_base = *(u64 *)(ptr + 2);
+        u32 discovery_range_length = *(u32 *)(ptr + 10);
+        u16 reserved = *(u16 *)(ptr + 14);
+        log(LOG_INFO,
+            "  MADT Entry %u: GICR (Discovery Base: 0x%llx, Length: %u, "
+            "Reserved: 0x%x)",
+            entry_count, discovery_range_base, discovery_range_length,
+            reserved);
+      }
+      break;
+    case 15:
+      if (length >= 20) {
+        u32 its_id = *(u32 *)(ptr + 2);
+        u64 physical_base_address = *(u64 *)(ptr + 6);
+        log(LOG_INFO, "  MADT Entry %u: GIC ITS (ID: %u, Phys Base: 0x%llx)",
+            entry_count, its_id, physical_base_address);
+      }
+      break;
+    case 16:
+      if (length >= 16) {
+        u16 mailbox_version = *(u16 *)(ptr + 2);
+        u16 reserved = *(u16 *)(ptr + 4);
+        u64 mailbox_address = *(u64 *)(ptr + 6);
+        log(LOG_INFO,
+            "  MADT Entry %u: MP Wakeup (Mailbox Ver: %u, Reserved: 0x%x, "
+            "Addr: 0x%llx)",
+            entry_count, mailbox_version, reserved, mailbox_address);
+      }
+      break;
+    case 17:
+      if (length >= 12) {
+        u8 version = *(ptr + 2);
+        u32 acpi_processor_id = *(u32 *)(ptr + 3);
+        u32 physical_processor_id = *(u32 *)(ptr + 7);
+        u32 flags = *(u32 *)(ptr + 11);
+        log(LOG_INFO,
+            "  MADT Entry %u: Core PIC (Ver: %u, ACPI Proc ID: %u, Phys Proc "
+            "ID: %u, Flags: 0x%x)",
+            entry_count, version, acpi_processor_id, physical_processor_id,
+            flags);
+      }
+      break;
+    case 18:
+      if (length >= 16) {
+        u8 version = *(ptr + 2);
+        u64 base_address = *(u64 *)(ptr + 3);
+        u16 size = *(u16 *)(ptr + 11);
+        u16 cascade_vector = *(u16 *)(ptr + 13);
+        log(LOG_INFO,
+            "  MADT Entry %u: LIO PIC (Ver: %u, Base Addr: 0x%llx, Size: %u, "
+            "Cascade Vec: %u; Mapping: variable)",
+            entry_count, version, base_address, size, cascade_vector);
+      }
+      break;
+    case 19:
+      if (length >= 16) {
+        u8 version = *(ptr + 2);
+        u64 base_address = *(u64 *)(ptr + 3);
+        u16 size = *(u16 *)(ptr + 11);
+        u64 cascade_vector = *(u64 *)(ptr + 13);
+        log(LOG_INFO,
+            "  MADT Entry %u: HT PIC (Ver: %u, Base Addr: 0x%llx, Size: %u, "
+            "Cascade Vec: 0x%llx)",
+            entry_count, version, base_address, size, cascade_vector);
+      }
+      break;
+    case 20:
+      if (length >= 12) {
+        u8 version = *(ptr + 2);
+        u8 cascade_vector = *(ptr + 3);
+        u8 node = *(ptr + 4);
+        u64 node_map = *(u64 *)(ptr + 5);
+        log(LOG_INFO,
+            "  MADT Entry %u: EIO PIC (Ver: %u, Cascade Vec: %u, Node: %u, "
+            "Node Map: 0x%llx)",
+            entry_count, version, cascade_vector, node, node_map);
+      }
+      break;
+    case 21:
+      if (length >= 16) {
+        u8 version = *(ptr + 2);
+        u64 message_address = *(u64 *)(ptr + 3);
+        u32 start = *(u32 *)(ptr + 11);
+        u32 count = *(u32 *)(ptr + 15);
+        log(LOG_INFO,
+            "  MADT Entry %u: MSI PIC (Ver: %u, Msg Addr: 0x%llx, Start Vec: "
+            "%u, Count: %u)",
+            entry_count, version, message_address, start, count);
+      }
+      break;
+    case 22:
+      if (length >= 16) {
+        u8 version = *(ptr + 2);
+        u64 base_address = *(u64 *)(ptr + 3);
+        u16 size = *(u16 *)(ptr + 11);
+        u16 hardware_id = *(u16 *)(ptr + 13);
+        u16 gsi_base = *(u16 *)(ptr + 15);
+        log(LOG_INFO,
+            "  MADT Entry %u: BIO PIC (Ver: %u, Base Addr: 0x%llx, Size: %u, "
+            "HW ID: %u, GSI Base: %u)",
+            entry_count, version, base_address, size, hardware_id, gsi_base);
+      }
+      break;
+    case 23:
+      if (length >= 16) {
+        u8 version = *(ptr + 2);
+        u64 base_address = *(u64 *)(ptr + 3);
+        u16 size = *(u16 *)(ptr + 11);
+        u16 cascade_vector = *(u16 *)(ptr + 13);
+        log(LOG_INFO,
+            "  MADT Entry %u: LPC PIC (Ver: %u, Base Addr: 0x%llx, Size: %u, "
+            "Cascade Vec: %u)",
+            entry_count, version, base_address, size, cascade_vector);
+      }
+      break;
+    default:
+      log(LOG_WARN,
+          "  MADT Entry %u: Unknown type %u (length: %u); skipping parse.",
+          entry_count, type, length);
+      break;
+    }
+
+    ptr += length;
+    entry_count++;
+  }
+
+  log(LOG_OKAY, "ACPI: MADT parsing complete (%u entries processed).",
+      entry_count);
+}
+
 void acpi_init(void) {
   acpi_ctx.rsdp = acpi_find_rsdp();
   if (acpi_ctx.rsdp == NULL) {
@@ -294,6 +638,16 @@ void acpi_init(void) {
         acpi_ctx.num_entries);
   }
 
+  log(LOG_INFO, "ACPI: RSDT/XSDT Entries:");
+  const u8 *sdt_entries = (const u8 *)acpi_ctx.sdt_ptr;
+  for (u32 i = 0; i < acpi_ctx.num_entries;
+       i++, sdt_entries += acpi_ctx.entry_size) {
+    u64 table_addr = (acpi_ctx.entry_size == sizeof(u64))
+                         ? *(const u64 *)sdt_entries
+                         : *(const u32 *)sdt_entries;
+    log(LOG_INFO, "  Entry %u: 0x%llx", i, table_addr);
+  }
+
 #define MAX_TABLES 32
   acpi_ctx.tables =
       (sdt_header_t **)kcalloc(MAX_TABLES, sizeof(sdt_header_t *));
@@ -350,7 +704,8 @@ void acpi_init(void) {
 
   madt_t *madt = (madt_t *)acpi_get_table("APIC");
   if (madt) {
-    log(LOG_OKAY, "ACPI: MADT found - Local APIC at 0x%x, Flags: 0x%x",
+    log(LOG_OKAY, "ACPI: MADT found - LAPIC at 0x%x, Flags: 0x%x",
         madt->local_apic_addr, madt->flags);
+    acpi_parse_madt(madt);
   }
 }
