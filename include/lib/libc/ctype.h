@@ -7,4 +7,15 @@ static inline int isspace(int c) {
           c == '\v');
 }
 
+static inline int isalpha(int c) {
+  return ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'));
+}
+
+static inline int toupper(int c) {
+  if (c >= 'a' && c <= 'z') {
+    return c - 'a' + 'A';
+  }
+  return c;
+}
+
 #endif

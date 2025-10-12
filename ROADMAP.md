@@ -38,7 +38,7 @@
 - [ ] initrd
 - [ ] block device abstraction
 - ... (maybe)
-## Kernel code
+## Kernel core
 - [ ] c standard libs
 - [x] logger
 ## Networking

@@ -42,3 +42,10 @@ void pic_unmask(u8 irq) {
   value &= ~(1 << irq);
   outb(port, value);
 }
+
+void pic_send_eoi(u8 irq) {
+  if (irq >= 8) {
+    outb(PIC2_CMD, 0x20);
+  }
+  outb(PIC1_CMD, 0x20);
+}

@@ -5,6 +5,7 @@
 #include <arch/i386/multiboot.h>
 #include <arch/i386/pic.h>
 #include <arch/i386/pit.h>
+#include <drivers/ps2.h>
 #include <drivers/serial.h>
 #include <drivers/time.h>
 #include <drivers/vbe.h>
@@ -52,6 +53,10 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   heap_init();
   acpi_init();
   time_init();
+  status = ps2_keyboard_init();
+  if (status != KERNEL_OK) {
+    kernel_panic("Failed to initialize PS/2 keyboard");
+  }
 
   printf("Welcome to FrostixOS!\n");
 
