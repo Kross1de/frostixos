@@ -27,6 +27,8 @@
 ## Drivers
 - [x] PIC
 - [ ] PS2
+    - [x] keyboard
+    - [ ] mouse
 - [ ] PCI enumeration
 - [ ] IDE/ATA
 - [ ] CMOS
@@ -39,7 +41,6 @@
 - [ ] block device abstraction
 - ... (maybe)
 ## Kernel core
-- [ ] c standard libs
 - [x] logger
 ## Networking
 - [ ] TCP/IP stack

@@ -78,7 +78,11 @@ static void keyboard_handler(registers_t *regs) {
         }
         if (c != 0) {
           terminal_putchar(&g_terminal, c);
-          serial_write_char(c);
+	  if (c == '\b') {
+	    serial_write_string("\b \b");
+	  } else {
+            serial_write_char(c);
+	  }
         }
       }
       break;
