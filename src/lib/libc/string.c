@@ -145,3 +145,52 @@ int memcmp(const void *ptr1, const void *ptr2, size_t num) {
 
   return 0;
 }
+
+char *strchr(const char *s, int c) {
+  if (!s) {
+    return NULL;
+  }
+  while (*s) {
+    if (*s == (char)c) {
+      return (char *)s;
+    }
+    s++;
+  }
+  if (c == 0) {
+    return (char *)s;
+  }
+  return NULL;
+}
+
+char *strtok(char *str, const char *delim) {
+  static char *last = NULL;
+
+  if (str != NULL) {
+    last = str;
+  }
+  if (last == NULL || *last == '\0') {
+    return NULL;
+  }
+
+  while (*last && strchr(delim, *last)) {
+    last++;
+  }
+  if (*last == '\0') {
+    return NULL;
+  }
+
+  char *start = last;
+
+  while (*last && !strchr(delim, *last)) {
+    last++;
+  }
+
+  if (*last != '\0') {
+    *last = '\0';
+    last++;
+  } else {
+    last = NULL;
+  }
+
+  return start;
+}

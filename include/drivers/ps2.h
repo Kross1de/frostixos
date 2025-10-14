@@ -4,5 +4,6 @@
 #include <kernel/kernel.h>
 
 kernel_status_t ps2_keyboard_init(void);
+char ps2_get_char(void);
 
 #endif

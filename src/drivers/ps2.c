@@ -33,6 +33,11 @@ static key_t us_keymap[128] = {
     [0x34] = {'.', '>'},   [0x35] = {'/', '?'}, [0x29] = {'`', '~'},
 };
 
+#define KEYBOARD_BUFFER_SIZE 256
+static volatile char keyboard_buffer[KEYBOARD_BUFFER_SIZE];
+static volatile uint32_t buffer_head = 0;
+static volatile uint32_t buffer_tail = 0;
+
 static bool left_shift = false;
 static bool right_shift = false;
 static bool caps_lock = false;
@@ -77,12 +82,8 @@ static void keyboard_handler(registers_t *regs) {
           c = shift_active ? us_keymap[code].shifted : us_keymap[code].normal;
         }
         if (c != 0) {
-          terminal_putchar(&g_terminal, c);
-	  if (c == '\b') {
-	    serial_write_string("\b \b");
-	  } else {
-            serial_write_char(c);
-	  }
+          keyboard_buffer[buffer_tail] = c;
+          buffer_tail = (buffer_tail + 1) % KEYBOARD_BUFFER_SIZE;
         }
       }
       break;
@@ -90,6 +91,14 @@ static void keyboard_handler(registers_t *regs) {
   }
 
   pic_send_eoi(1);
+}
+
+char ps2_get_char(void) {
+  while (buffer_head == buffer_tail) {
+  }
+  char c = keyboard_buffer[buffer_head];
+  buffer_head = (buffer_head + 1) % KEYBOARD_BUFFER_SIZE;
+  return c;
 }
 
 kernel_status_t ps2_keyboard_init(void) {

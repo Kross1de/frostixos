@@ -14,6 +14,7 @@
 #include <lib/font.h>
 #include <lib/terminal.h>
 #include <misc/logger.h>
+#include <misc/shell.h>
 #include <mm/bitmap.h>
 #include <mm/heap.h>
 #include <mm/vmm.h>
@@ -57,6 +58,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   if (status != KERNEL_OK) {
     kernel_panic("Failed to initialize PS/2 keyboard");
   }
+  shell_start();
 
   printf("Welcome to FrostixOS!\n");
 
