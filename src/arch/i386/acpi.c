@@ -35,9 +35,13 @@ static u8 acpi_checksum(const void *table, u32 length) {
   return sum;
 }
 
+static inline u16 read16(uintptr_t addr) {
+  return *(volatile u16 *)addr;
+}
+
 rsdp_t *acpi_find_rsdp(void) {
   // search EBDA
-  u16 ebda_seg = *(volatile const u16 *)EBDA_BASE;
+  u16 ebda_seg = read16(EBDA_BASE);
   u32 ebda_addr = (u32)ebda_seg << 4;
   for (u32 ptr = ebda_addr; ptr < ebda_addr + EBDA_SIZE; ptr += ALIGNMENT_16) {
     if (memcmp((const void *)ptr, RSDP_SIGNATURE, RSDP_SIGNATURE_LEN) == 0) {

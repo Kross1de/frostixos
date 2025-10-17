@@ -54,6 +54,6 @@
 - [ ] UI
 - [ ] SMP
 - [ ] user mode support
-- [ ] shell
-- [ ] elf loader
+- [x] shell (WIP)
+- [ ] ELF loader
 - [ ] USB support

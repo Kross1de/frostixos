@@ -188,6 +188,20 @@ kernel_status_t vbe_draw_vertical_line(u16 x, u16 y, u16 height,
 
 kernel_status_t vbe_draw_circle(u16 x, u16 y, u16 radius, vbe_color_t color);
 
+u16 vbe_get_width(void);
+u16 vbe_get_height(void);
+u8 vbe_get_bpp(void);
+kernel_status_t vbe_scroll();
+kernel_status_t vbe_draw_filled_rect(u16 x, u16 y, u16 width, u16 height,
+                                     vbe_color_t fill, vbe_color_t border);
+void vbe_draw_string(u16 x, u16 y, const char *str, vbe_color_t fg,
+                     vbe_color_t bg);
+void vbe_draw_string_centered(u16 y, const char *str, vbe_color_t fg,
+                              vbe_color_t bg);
+kernel_status_t vbe_draw_string_wrapped(u16 x, u16 y, u16 max_width,
+                                        const char *str, vbe_color_t fg,
+                                        vbe_color_t bg);
+
 kernel_status_t vbe_show_info(void);
 kernel_status_t vbe_list_modes(void);
 kernel_status_t vbe_blit(u16 dst_x, u16 dst_y, u16 src_x, u16 src_y, u16 width,

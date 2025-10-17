@@ -1,6 +1,5 @@
 #include <arch/i386/idt.h>
 #include <arch/i386/isr.h>
-#include <drivers/screen.h>
 #include <kernel/kernel.h>
 
 isr_handler_t interrupt_handlers[256];

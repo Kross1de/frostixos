@@ -17,6 +17,7 @@
 #include <misc/shell.h>
 #include <mm/bitmap.h>
 #include <mm/heap.h>
+#include <mm/slab.h>
 #include <mm/vmm.h>
 #include <printf.h>
 
@@ -51,6 +52,10 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
   sti();
   pmm_init(multiboot_info);
   vmm_init();
+  status = slab_init();
+  if (status != KERNEL_OK) {
+    kernel_panic("Failed to initialize slab allocator");
+  }
   heap_init();
   acpi_init();
   time_init();

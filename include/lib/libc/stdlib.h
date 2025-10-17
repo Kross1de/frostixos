@@ -2,7 +2,9 @@
 #define STDLIB_H
 
 #include <stddef.h>
+#include <kernel/kernel.h>
 
 int atoi(const char *nptr);
+u32 hex_to_u32(const char *str);
 
 #endif

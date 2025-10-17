@@ -1,12 +1,10 @@
 #ifndef LIB_TERMINAL_H
 #define LIB_TERMINAL_H
 
-#include <drivers/screen.h>
 #include <drivers/vbe.h>
 #include <kernel/kernel.h>
+#include <lib/ansi_types.h>
 #include <lib/font.h>
-
-typedef enum { ANSI_NORMAL, ANSI_ESC, ANSI_CSI } ansi_state_t;
 
 typedef struct {
   u16 col;
@@ -16,12 +14,7 @@ typedef struct {
   vbe_color_t fg_color;
   vbe_color_t bg_color;
   const font_t *font;
-  ansi_state_t state;
-  int ansi_private;
-  char ansi_buf[64];
-  int ansi_buf_idx;
-  int ansi_params[16];
-  int ansi_param_count;
+  ansi_context_t ansi_ctx;
 } terminal_t;
 
 extern terminal_t g_terminal;

@@ -1,4 +1,3 @@
-#include <drivers/screen.h>
 #include <drivers/vbe.h>
 #include <kernel/kernel.h>
 #include <lib/font.h>
@@ -6,14 +5,13 @@
 
 static void draw_panic(const char *message) {
   vbe_clear_screen(VBE_COLOR_RED);
-  screen_draw_rect(20, 20, vbe_get_device()->width - 40,
-                   vbe_get_device()->height - 40, VBE_COLOR_DARK_GRAY,
-                   VBE_COLOR_WHITE);
-  screen_draw_string_centered(60, "!!! KERNEL PANIC !!!", VBE_COLOR_WHITE,
-                              VBE_COLOR_RED);
-  screen_draw_string(40, 120, message, VBE_COLOR_YELLOW, VBE_COLOR_DARK_GRAY);
-  screen_draw_string(40, 160, "System halted. Please restart your computer.",
-                     VBE_COLOR_WHITE, VBE_COLOR_DARK_GRAY);
+  vbe_draw_rect(20, 20, vbe_get_device()->width - 40,
+                vbe_get_device()->height - 40, VBE_COLOR_DARK_GRAY);
+  vbe_draw_string_centered(60, "!!! KERNEL PANIC !!!", VBE_COLOR_WHITE,
+                           VBE_COLOR_RED);
+  vbe_draw_string(40, 120, message, VBE_COLOR_YELLOW, VBE_COLOR_DARK_GRAY);
+  vbe_draw_string(40, 160, "System halted. Please restart your computer.",
+                  VBE_COLOR_WHITE, VBE_COLOR_DARK_GRAY);
 }
 
 void kernel_panic(const char *message) {

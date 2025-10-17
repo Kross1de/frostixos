@@ -1,4 +1,3 @@
-#include <drivers/screen.h>
 #include <drivers/time.h>
 #include <drivers/vbe.h>
 #include <kernel/kernel.h>
@@ -80,14 +79,14 @@ void draw_status(void) {
   u16 font_w = font->width;
   u16 font_h = font->height;
   size_t len = strlen(buf);
-  u16 screen_w = screen_get_width();
-  u16 screen_h = screen_get_height();
+  u16 screen_w = vbe_get_width();
+  u16 screen_h = vbe_get_height();
   u16 y = (screen_h / font_h - 1) * font_h;
   u16 x = screen_w - (len * font_w);
 
   vbe_fill_rect(x, y, len * font_w, font_h, g_terminal.bg_color);
 
-  screen_draw_string(x, y, buf, g_terminal.fg_color, g_terminal.bg_color);
+  vbe_draw_string(x, y, buf, g_terminal.fg_color, g_terminal.bg_color);
 
   g_prev_time = g_current_time;
 }

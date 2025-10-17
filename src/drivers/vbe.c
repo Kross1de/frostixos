@@ -1,6 +1,8 @@
 #include <arch/i386/multiboot.h>
 #include <drivers/vbe.h>
 #include <kernel/kernel.h>
+#include <lib/font.h>
+#include <lib/terminal.h>
 #include <misc/logger.h>
 #include <mm/vmm.h>
 #include <printf.h>
@@ -9,6 +11,24 @@
 extern u32 _multiboot_info_ptr;
 
 static vbe_device_t g_device = {0};
+
+#define VBE_WRITE32(addr, val) (*(volatile u32 *)(addr) = (val))
+
+/* Replicate color for word fill based on bpp */
+static u32 vbe_replicate_pixel(u32 pixel, u8 bpp) {
+  if (bpp == 32)
+    return pixel;
+  if (bpp == 16 || bpp == 15)
+    return (pixel << 16) | pixel;
+  if (bpp == 8)
+    return (pixel << 24) | (pixel << 16) | (pixel << 8) | pixel;
+  if (bpp == 24) {
+    /* For 24bpp, replicate as RGBRGBRG */
+    u32 rgb = pixel & 0xFFFFFF;
+    return (rgb << 8) | (rgb >> 16); /* Approximate for u32 write */
+  }
+  return pixel;
+}
 
 kernel_status_t vbe_init(void) {
   multiboot_info_t *mbi = (multiboot_info_t *)_multiboot_info_ptr;
@@ -166,15 +186,78 @@ vbe_color_t vbe_get_pixel(u16 x, u16 y) {
 
 kernel_status_t vbe_fill_rect(u16 x, u16 y, u16 width, u16 height,
                               vbe_color_t color) {
-  if (!g_device.initialized) {
+  if (!g_device.initialized || x + width > g_device.width ||
+      y + height > g_device.height) {
     return KERNEL_ERROR;
   }
-  for (u16 py = y; py < y + height; ++py) {
-    for (u16 px = x; px < x + width; ++px) {
-      if (vbe_put_pixel(px, py, color) != KERNEL_OK) {
-        return KERNEL_ERROR;
+
+  u8 *fb = vbe_get_framebuffer();
+  u32 pixel = vbe_color_to_pixel(color);
+  u32 bpp_bytes = g_device.bpp / 8;
+  u32 row_start = y * g_device.pitch + x * bpp_bytes;
+  u32 pat = vbe_replicate_pixel(pixel, g_device.bpp);
+
+  for (u16 py = 0; py < height; ++py) {
+    u8 *dst = fb + row_start;
+    u32 remaining = width;
+    u32 dst_idx = (u32)dst % 4; /* Alignment offset (assume 32-bit words) */
+
+    if (dst_idx) {
+      u32 left_pixels = MIN(remaining, (4 - dst_idx) / bpp_bytes);
+      for (u32 i = 0; i < left_pixels; ++i) {
+        switch (g_device.bpp) {
+        case 8:
+          *dst = (u8)pixel;
+          break;
+        case 15:
+        case 16:
+          *(u16 *)dst = (u16)pixel;
+          break;
+        case 24:
+          dst[0] = (u8)(pixel & 0xFF);
+          dst[1] = (u8)((pixel >> 8) & 0xFF);
+          dst[2] = (u8)((pixel >> 16) & 0xFF);
+          break;
+        case 32:
+          *(u32 *)dst = pixel;
+          break;
+        }
+        dst += bpp_bytes;
       }
+      remaining -= left_pixels;
     }
+
+    u32 aligned_words = (remaining * bpp_bytes) / 4;
+    u32 *dst32 = (u32 *)dst;
+    for (u32 i = 0; i < aligned_words; ++i) {
+      VBE_WRITE32(dst32 + i, pat);
+    }
+    u32 filled_pixels = aligned_words * (4 / bpp_bytes);
+    dst += filled_pixels * bpp_bytes;
+    remaining -= filled_pixels;
+
+    for (u32 i = 0; i < remaining; ++i) {
+      switch (g_device.bpp) {
+      case 8:
+        *dst = (u8)pixel;
+        break;
+      case 15:
+      case 16:
+        *(u16 *)dst = (u16)pixel;
+        break;
+      case 24:
+        dst[0] = (u8)(pixel & 0xFF);
+        dst[1] = (u8)((pixel >> 8) & 0xFF);
+        dst[2] = (u8)((pixel >> 16) & 0xFF);
+        break;
+      case 32:
+        *(u32 *)dst = pixel;
+        break;
+      }
+      dst += bpp_bytes;
+    }
+
+    row_start += g_device.pitch;
   }
   return KERNEL_OK;
 }
@@ -197,6 +280,39 @@ kernel_status_t vbe_draw_rect(u16 x, u16 y, u16 width, u16 height,
 
 kernel_status_t vbe_clear_screen(vbe_color_t color) {
   return vbe_fill_rect(0, 0, g_device.width, g_device.height, color);
+}
+
+u16 vbe_get_width(void) {
+  vbe_device_t *dev = vbe_get_device();
+  return dev && dev->initialized ? dev->width : 0;
+}
+
+u16 vbe_get_height(void) {
+  vbe_device_t *dev = vbe_get_device();
+  return dev && dev->initialized ? dev->height : 0;
+}
+
+u8 vbe_get_bpp(void) {
+  vbe_device_t *dev = vbe_get_device();
+  return dev && dev->initialized ? dev->bpp : 0;
+}
+
+void vbe_draw_string(u16 x, u16 y, const char *str, vbe_color_t fg,
+                     vbe_color_t bg) {
+  font_render_string(str, x, y, fg, bg, font_get_default());
+}
+
+void vbe_draw_string_centered(u16 y, const char *str, vbe_color_t fg,
+                              vbe_color_t bg) {
+  const font_t *font = font_get_default();
+  size_t len = strlen(str);
+  u16 screen_width = vbe_get_width();
+  u16 str_width = len * font->width;
+  u16 x = (screen_width > str_width) ? (screen_width - str_width) / 2 : 0;
+  if (y >= vbe_get_height()) {
+    return;
+  }
+  vbe_draw_string(x, y, str, fg, bg);
 }
 
 kernel_status_t vbe_draw_line(u16 x1, u16 y1, u16 x2, u16 y2,
@@ -286,6 +402,26 @@ kernel_status_t vbe_list_modes(void) {
   return KERNEL_OK;
 }
 
+kernel_status_t vbe_scroll() {
+  if (!g_device.initialized)
+    return KERNEL_ERROR;
+
+  const font_t *font = font_get_default();
+  u16 line_height = font ? font->height : 16;
+
+  if (line_height >= g_device.height)
+    return KERNEL_ERROR;
+
+  vbe_blit(0, 0, 0, line_height, g_device.width, g_device.height - line_height);
+
+  vbe_color_t bg_color = g_terminal.bg_color;
+
+  vbe_fill_rect(0, g_device.height - line_height, g_device.width, line_height,
+                bg_color);
+
+  return KERNEL_OK;
+}
+
 kernel_status_t vbe_draw_circle(u16 cx, u16 cy, u16 radius, vbe_color_t color) {
   if (!g_device.initialized)
     return KERNEL_ERROR;
@@ -315,19 +451,109 @@ kernel_status_t vbe_draw_circle(u16 cx, u16 cy, u16 radius, vbe_color_t color) {
 
 kernel_status_t vbe_blit(u16 dst_x, u16 dst_y, u16 src_x, u16 src_y, u16 width,
                          u16 height) {
-  if (!g_device.initialized) {
+  if (!g_device.initialized)
     return KERNEL_ERROR;
-  }
   if (dst_x + width > g_device.width || dst_y + height > g_device.height ||
-      src_x + width > g_device.width || src_y + height > g_device.height) {
+      src_x + width > g_device.width || src_y + height > g_device.height)
     return KERNEL_INVALID_PARAM;
-  }
+
   u8 *fb = vbe_get_framebuffer();
   u32 bpp_bytes = g_device.bpp / 8;
-  for (u16 i = 0; i < height; ++i) {
-    void *src_ptr = fb + (src_y + i) * g_device.pitch + src_x * bpp_bytes;
-    void *dst_ptr = fb + (dst_y + i) * g_device.pitch + dst_x * bpp_bytes;
-    memmove(dst_ptr, src_ptr, width * bpp_bytes);
+
+  for (u16 py = 0; py < height; ++py) {
+    u8 *src = fb + (src_y + py) * g_device.pitch + src_x * bpp_bytes;
+    u8 *dst = fb + (dst_y + py) * g_device.pitch + dst_x * bpp_bytes;
+    u32 remaining = width;
+    u32 src_align = (u32)src % 4;
+    u32 dst_align = (u32)dst % 4;
+
+    if (src_align != dst_align) {
+      for (u32 px = 0; px < width; ++px) {
+        u32 pixel = 0;
+        switch (g_device.bpp) {
+        case 8:
+          pixel = *src;
+          *dst = (u8)pixel;
+          break;
+        case 15:
+        case 16:
+          pixel = *(u16 *)src;
+          *(u16 *)dst = (u16)pixel;
+          break;
+        case 24:
+          dst[0] = src[0];
+          dst[1] = src[1];
+          dst[2] = src[2];
+          break;
+        case 32:
+          *(u32 *)dst = *(u32 *)src;
+          break;
+        default:
+          return KERNEL_NOT_IMPLEMENTED;
+        }
+        src += bpp_bytes;
+        dst += bpp_bytes;
+      }
+      continue;
+    }
+
+    u32 left_pixels =
+        (dst_align != 0) ? MIN(remaining, (4 - dst_align) / bpp_bytes) : 0;
+    for (u32 i = 0; i < left_pixels; ++i) {
+      switch (g_device.bpp) {
+      case 8:
+        *dst = *src;
+        break;
+      case 15:
+      case 16:
+        *(u16 *)dst = *(u16 *)src;
+        break;
+      case 24:
+        dst[0] = src[0];
+        dst[1] = src[1];
+        dst[2] = src[2];
+        break;
+      case 32:
+        *(u32 *)dst = *(u32 *)src;
+        break;
+      }
+      src += bpp_bytes;
+      dst += bpp_bytes;
+    }
+    remaining -= left_pixels;
+
+    u32 aligned_words = (remaining * bpp_bytes) / 4;
+    u32 *src32 = (u32 *)src;
+    u32 *dst32 = (u32 *)dst;
+    for (u32 i = 0; i < aligned_words; ++i) {
+      VBE_WRITE32(dst32 + i, *(src32 + i));
+    }
+    u32 filled_pixels = aligned_words * (4 / bpp_bytes);
+    src += filled_pixels * bpp_bytes;
+    dst += filled_pixels * bpp_bytes;
+    remaining -= filled_pixels;
+
+    for (u32 i = 0; i < remaining; ++i) {
+      switch (g_device.bpp) {
+      case 8:
+        *dst = *src;
+        break;
+      case 15:
+      case 16:
+        *(u16 *)dst = *(u16 *)src;
+        break;
+      case 24:
+        dst[0] = src[0];
+        dst[1] = src[1];
+        dst[2] = src[2];
+        break;
+      case 32:
+        *(u32 *)dst = *(u32 *)src;
+        break;
+      }
+      src += bpp_bytes;
+      dst += bpp_bytes;
+    }
   }
   return KERNEL_OK;
 }

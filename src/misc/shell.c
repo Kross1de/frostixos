@@ -3,6 +3,7 @@
 #include <lib/terminal.h>
 #include <mm/bitmap.h>
 #include <mm/heap.h>
+#include <mm/slab.h>
 #include <mm/vmm.h>
 #include <printf.h>
 #include <stddef.h>
@@ -33,21 +34,15 @@ static char *readline(char *buf, size_t buf_size) {
   return buf;
 }
 
-static u32 hex_to_u32(const char *str) {
-  u32 val = 0;
-  while (*str) {
-    char c = *str++;
-    if (c >= '0' && c <= '9') {
-      val = (val << 4) | (c - '0');
-    } else if (c >= 'a' && c <= 'f') {
-      val = (val << 4) | (c - 'a' + 10);
-    } else if (c >= 'A' && c <= 'F') {
-      val = (val << 4) | (c - 'A' + 10);
-    } else {
-      break;
+static struct kmem_cache *find_cache_by_name(const char *name) {
+  struct list_head *pos;
+  list_for_each(pos, &kmem_caches) {
+    struct kmem_cache *cache = list_entry(pos, struct kmem_cache, list);
+    if (strcmp(cache->name, name) == 0) {
+      return cache;
     }
   }
-  return val;
+  return NULL;
 }
 
 void shell_start(void) {
@@ -58,8 +53,8 @@ void shell_start(void) {
   while (1) {
     printf("$ ");
     readline(input, sizeof(input));
-
     char *cmd = strtok(input, " ");
+
     if (cmd == NULL) {
       continue;
     }
@@ -81,6 +76,12 @@ void shell_start(void) {
       printf("  vmm_map <virt_hex> <phys_hex> <flags> - Map virtual to "
              "physical address\n");
       printf("  vmm_unmap <virt_hex> - Unmap the virtual address\n");
+      printf("  slab_create <name> <size> <align> - Create a slab cache\n");
+      printf("  slab_destroy <name> - Destroy a slab cache\n");
+      printf("  slab_alloc <name> - Allocate an object from the cache\n");
+      printf(
+          "  slab_free <name> <hex_ptr> - Free an object back to the cache\n");
+      printf("  slab_info <name> - Display cache statistics\n");
 
     } else if (strcmp(cmd, "echo") == 0) {
       char *arg = strtok(NULL, "");
@@ -90,15 +91,18 @@ void shell_start(void) {
 
     } else if (strcmp(cmd, "clear") == 0) {
       vbe_clear_screen(VBE_COLOR_BLACK);
+
     } else if (strcmp(cmd, "heap_info") == 0) {
       size_t total = heap_get_total_size();
       size_t free = heap_get_free_size();
       printf("Heap Total: %zu bytes, Free: %zu bytes\n", total, free);
+
     } else if (strcmp(cmd, "pmm_info") == 0) {
       u32 total_pages = pmm_get_total_pages();
       u32 free_pages = pmm_get_free_pages();
       printf("Physical Memory Total Pages: %u, Free Pages: %u\n", total_pages,
              free_pages);
+
     } else if (strcmp(cmd, "alloc_page") == 0) {
       u32 addr = pmm_alloc_page();
       if (addr != 0) {
@@ -106,6 +110,7 @@ void shell_start(void) {
       } else {
         printf("Failed to allocate physical page\n");
       }
+
     } else if (strcmp(cmd, "free_page") == 0) {
       char *arg = strtok(NULL, " ");
       if (arg) {
@@ -115,6 +120,7 @@ void shell_start(void) {
       } else {
         printf("Usage: free_page <hex_addr>\n");
       }
+
     } else if (strcmp(cmd, "kmalloc") == 0) {
       char *arg = strtok(NULL, " ");
       if (arg) {
@@ -128,6 +134,7 @@ void shell_start(void) {
       } else {
         printf("Usage: kmalloc <size>\n");
       }
+
     } else if (strcmp(cmd, "kfree") == 0) {
       char *arg = strtok(NULL, " ");
       if (arg) {
@@ -137,6 +144,7 @@ void shell_start(void) {
       } else {
         printf("Usage: kfree <hex_ptr>\n");
       }
+
     } else if (strcmp(cmd, "vmm_map") == 0) {
       char *virt_str = strtok(NULL, " ");
       char *phys_str = strtok(NULL, " ");
@@ -155,6 +163,7 @@ void shell_start(void) {
       } else {
         printf("Usage: vmm_map <virt_hex> <phys_hex> <flags>\n");
       }
+
     } else if (strcmp(cmd, "vmm_unmap") == 0) {
       char *virt_str = strtok(NULL, " ");
       if (virt_str) {
@@ -168,6 +177,96 @@ void shell_start(void) {
       } else {
         printf("Usage: vmm_unmap <virt_hex>\n");
       }
+
+    } else if (strcmp(cmd, "slab_create") == 0) {
+      char *name = strtok(NULL, " ");
+      char *size_str = strtok(NULL, " ");
+      char *align_str = strtok(NULL, " ");
+      if (name && size_str && align_str) {
+        u32 size = atoi(size_str);
+        u32 align = atoi(align_str);
+        struct kmem_cache *cache =
+            kmem_cache_create(name, size, align, SLAB_FLAGS_NONE, NULL);
+        if (cache) {
+          printf("Created slab cache '%s' (size=%u, align=%u)\n", name, size,
+                 align);
+        } else {
+          printf("Failed to create slab cache '%s'\n", name);
+        }
+      } else {
+        printf("Usage: slab_create <name> <size> <align>\n");
+      }
+
+    } else if (strcmp(cmd, "slab_destroy") == 0) {
+      char *name = strtok(NULL, " ");
+      if (name) {
+        struct kmem_cache *cache = find_cache_by_name(name);
+        if (cache) {
+          kmem_cache_destroy(cache);
+          printf("Destroyed slab cache '%s'\n", name);
+        } else {
+          printf("Slab cache '%s' not found\n", name);
+        }
+      } else {
+        printf("Usage: slab_destroy <name>\n");
+      }
+
+    } else if (strcmp(cmd, "slab_alloc") == 0) {
+      char *name = strtok(NULL, " ");
+      if (name) {
+        struct kmem_cache *cache = find_cache_by_name(name);
+        if (cache) {
+          void *obj = kmem_cache_alloc(cache);
+          if (obj) {
+            printf("Allocated object from '%s' at 0x%p\n", name, obj);
+          } else {
+            printf("Failed to allocate from '%s'\n", name);
+          }
+        } else {
+          printf("Slab cache '%s' not found\n", name);
+        }
+      } else {
+        printf("Usage: slab_alloc <name>\n");
+      }
+
+    } else if (strcmp(cmd, "slab_free") == 0) {
+      char *name = strtok(NULL, " ");
+      char *ptr_str = strtok(NULL, " ");
+      if (name && ptr_str) {
+        struct kmem_cache *cache = find_cache_by_name(name);
+        if (cache) {
+          void *obj = (void *)hex_to_u32(ptr_str);
+          kmem_cache_free(cache, obj);
+          printf("Freed object in '%s' at 0x%p\n", name, obj);
+        } else {
+          printf("Slab cache '%s' not found\n", name);
+        }
+      } else {
+        printf("Usage: slab_free <name> <hex_ptr>\n");
+      }
+
+    } else if (strcmp(cmd, "slab_info") == 0) {
+      char *name = strtok(NULL, " ");
+      if (name) {
+        struct kmem_cache *cache = find_cache_by_name(name);
+        if (cache) {
+          u32 full_slabs = 0, partial_slabs = 0, free_slabs = 0;
+          struct list_head *pos;
+          list_for_each(pos, &cache->slabs_full) full_slabs++;
+          list_for_each(pos, &cache->slabs_partial) partial_slabs++;
+          list_for_each(pos, &cache->slabs_free) free_slabs++;
+
+          printf("Slab cache '%s': obj_size=%u, objs_per_slab=%u\n", name,
+                 cache->object_size, cache->objects_per_slab);
+          printf("Slabs: full=%u, partial=%u, free=%u\n", full_slabs,
+                 partial_slabs, free_slabs);
+        } else {
+          printf("Slab cache '%s' not found\n", name);
+        }
+      } else {
+        printf("Usage: slab_info <name>\n");
+      }
+
     } else {
       printf("Unknown command: %s\n", cmd);
     }

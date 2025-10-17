@@ -26,3 +26,23 @@ int atoi(const char *nptr) {
   }
   return sign * result;
 }
+
+u32 hex_to_u32(const char *str) {
+  u32 val = 0;
+  if (str[0] == '0' && (str[1] == 'x' || str[1] == 'X')) {
+    str += 2;
+  }
+while (*str) {
+    char c = *str++;
+    if (c >= '0' && c <= '9') {
+      val = (val << 4) | (c - '0');
+    } else if (c >= 'a' && c <= 'f') {
+      val = (val << 4) | (c - 'a' + 10);
+    } else if (c >= 'A' && c <= 'F') {
+      val = (val << 4) | (c - 'A' + 10);
+    } else {
+      break;
+    }
+  }
+  return val;
+}
