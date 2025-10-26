@@ -112,7 +112,7 @@ int vprintf_(const char *format, va_list va);
  * counting the terminating null character
  */
 int fctprintf(void (*out)(char character, void *arg), void *arg,
-              const char *format, ...);
+	      const char *format, ...);
 
 /**
  * vprintf variant for custom output function
@@ -124,7 +124,7 @@ int fctprintf(void (*out)(char character, void *arg), void *arg,
  * counting the terminating null character
  */
 int vfctprintf(void (*out)(char character, void *arg), void *arg,
-               const char *format, va_list va);
+	       const char *format, va_list va);
 
 #ifdef __cplusplus
 extern "C" {

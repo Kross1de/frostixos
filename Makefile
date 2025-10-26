@@ -6,6 +6,7 @@ VERSION := 0.1.0
 .DEFAULT_GOAL := all
 
 SRCDIR := src
+
 INCDIR := include
 LIBCINC := include/lib/libc
 BUILDDIR := build
@@ -36,8 +37,11 @@ C_SOURCES := $(shell find $(SRCDIR) -name '*.c' 2>/dev/null)
 ASM_SOURCES := $(shell find $(SRCDIR) -name '*.s' 2>/dev/null)
 
 C_OBJECTS := $(C_SOURCES:$(SRCDIR)/%.c=$(BUILDDIR)/%.o)
+C_OBJECTS += $(patsubst kernel/%.c,$(BUILDDIR)/kernel/%.o,$(filter kernel/%.c,$(C_SOURCES)))
 ASM_OBJECTS := $(ASM_SOURCES:$(SRCDIR)/%.s=$(BUILDDIR)/%.o)
-OBJECTS := $(C_OBJECTS) $(ASM_OBJECTS)
+ASM_OBJECTS += $(patsubst kernel/%.s,$(BUILDDIR)/kernel/%.o,$(filter kernel/%.s,$(ASM_SOURCES)))
+
+OBJECTS := $(sort $(C_OBJECTS) $(ASM_OBJECTS))
 
 DEPFILES := $(C_OBJECTS:.o=.d)
 
@@ -73,6 +77,12 @@ all: $(KERNEL)
 iso: $(ISO)
 	$(call print_success,"ISO created: $(ISO)")
 
+initrd: $(BUILDDIR)/initrd.tar
+
+$(BUILDDIR)/initrd.tar: | $(BUILDDIR)
+	$(call print_info,"Creating initrd...")
+	@tar -cf $@ -C initrd_dir .
+
 $(BUILDDIR):
 	@mkdir -p $(BUILDDIR)
 	@mkdir -p $(dir $(OBJECTS))
@@ -96,6 +106,7 @@ $(ISO): $(KERNEL)
 	$(call print_info,"Creating ISO...")
 	@mkdir -p $(ISODIR)/boot/grub
 	@cp $(KERNEL) $(ISODIR)/boot/
+	@cp $(BUILDDIR)/initrd.tar $(ISODIR)/boot/
 	@cp $(SCRIPTSDIR)/grub.cfg $(ISODIR)/boot/grub/
 	@if command -v grub-mkrescue >/dev/null 2>&1; then \
 		grub-mkrescue -o $@ $(ISODIR) 2>/dev/null; \
@@ -179,11 +190,11 @@ install-deps-ubuntu:
 
 format:
 	$(call print_info,"Formatting source code...")
-	@find $(SRCDIR) $(INCDIR) -name '*.c' -o -name '*.h' | xargs clang-format -i 2>/dev/null || true
+	@find $(SRCDIR) $(EXTRA_SRCDIRS) $(INCDIR) -name '*.c' -o -name '*.h' | xargs clang-format -i 2>/dev/null || true
 
 lint:
 	$(call print_info,"Running static analysis...")
-	@find $(SRCDIR) -name '*.c' | xargs cppcheck --enable=all --std=c99 --platform=unix32 2>/dev/null || true
+	@find $(SRCDIR) $(EXTRA_SRCDIRS) -name '*.c' | xargs cppcheck --enable=all --std=c99 --platform=unix32 2>/dev/null || true
 
 help:
 	@echo "$(PROJECT_NAME) Build System"

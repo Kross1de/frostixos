@@ -3,6 +3,9 @@
 
 #include <kernel/kernel.h>
 
+/*
+ * Interactive shell API.
+ */
 void shell_start(void);
 
-#endif
+#endif  /* MISC_SHELL_H */

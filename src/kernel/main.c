@@ -1,5 +1,9 @@
+/*
+ * Kernel main entry point.
+ */
 #include <arch/i386/acpi.h>
 #include <arch/i386/cpuid.h>
+#include <arch/i386/e820.h>
 #include <arch/i386/gdt.h>
 #include <arch/i386/idt.h>
 #include <arch/i386/multiboot.h>
@@ -10,6 +14,7 @@
 #include <drivers/time.h>
 #include <drivers/vbe.h>
 #include <drivers/vga_text.h>
+#include <drivers/initrd.h>
 #include <kernel/kernel.h>
 #include <lib/font.h>
 #include <lib/terminal.h>
@@ -28,55 +33,97 @@
 u32 _multiboot_info_ptr = 0;
 terminal_t g_terminal;
 
-void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info) {
-  _multiboot_info_ptr = (u32)multiboot_info;
-  kernel_status_t status;
-  cpuid_vendor_t vendor;
-  cpuid_features_t features;
-  cpuid_extended_t extended;
+/* Kernel entry */
+void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info)
+{
+	_multiboot_info_ptr = (u32)multiboot_info;
+	kernel_status_t status;
 
-  status = multiboot_init(multiboot_magic, multiboot_info);
-  if (status != KERNEL_OK) {
-    kernel_panic("Failed to initialize multiboot information");
-  }
+	status = multiboot_init(multiboot_magic, multiboot_info);
+	if (status != KERNEL_OK)
+		kernel_panic("multiboot_init failed");
 
-  vga_text_init();
-  serial_init();
-  cpuid_init();
-  vbe_init();
-  font_init();
-  terminal_init(&g_terminal);
-  gdt_init();
-  idt_init();
-  pit_init(100);
-  sti();
-  pmm_init(multiboot_info);
-  vmm_init();
-  status = slab_init();
-  if (status != KERNEL_OK) {
-    kernel_panic("Failed to initialize slab allocator");
-  }
-  heap_init();
-  acpi_init();
-  time_init();
-  status = ps2_keyboard_init();
-  if (status != KERNEL_OK) {
-    kernel_panic("Failed to initialize PS/2 keyboard");
-  }
-  shell_start();
+	/* Early drivers */
+	vga_text_init();
+	serial_init();
 
-  printf("Welcome to FrostixOS!\n");
+	/* CPU features */
+	cpuid_init();
 
-  cpuid_get_vendor(&vendor);
-  printf("CPU Vendor: %s\n", vendor.vendor);
-  cpuid_get_features(&features);
-  printf("CPU Features - EAX: 0x%x, EBX: 0x%x, ECX: 0x%x, EDX: 0x%x\n",
-         features.eax, features.ebx, features.ecx, features.edx);
-  cpuid_get_extended(&extended);
-  printf("CPU Brand: %s\n", extended.brand_string);
+	/* Graphics and font */
+	vbe_init();
+	font_init();
 
-  for (;;) {
-    draw_status();
-    asm volatile("hlt");
-  }
+	/* Terminal */
+	terminal_init(&g_terminal);
+
+	/* Descriptor tables */
+	gdt_init();
+	idt_init();
+
+	/* Timer */
+	pit_init(100);
+
+	sti();
+    
+//    kernel_panic("test");
+//
+	/* Memory managers */
+	pmm_init(multiboot_info);
+	vmm_init();
+    
+    /* Memory map (E820) */
+    status = e820_init();
+    if (status != KERNEL_OK) {
+        kernel_panic("e820_init failed");
+    }
+    e820_print_map();
+
+	/* Discover and map initrd (if present) so higher-level code can consume it */
+    status = initrd_init(multiboot_info);
+    if (status != KERNEL_OK) {
+        kernel_panic("initrd_init failed");
+    }
+
+    status = slab_init();
+    if (status != KERNEL_OK) {
+        kernel_panic("slab_init failed");
+    }
+
+	heap_init();
+
+	/* ACPI, time and input */
+	acpi_init();
+	time_init();
+
+	status = ps2_keyboard_init();
+	if (status != KERNEL_OK)
+		kernel_panic("PS/2 init failed");
+
+	/* Start interactive shell */
+	shell_start();
+
+	/* Fallback message if shell returns */
+	printf("Welcome to FrostixOS!\n");
+
+	/* Probe CPU */
+	cpuid_vendor_t vendor;
+	cpuid_features_t features;
+	cpuid_extended_t extended;
+
+	cpuid_get_vendor(&vendor);
+	printf("CPU Vendor: %s\n", vendor.vendor);
+
+	cpuid_get_features(&features);
+	printf("CPU Features - EAX: 0x%x, EBX: 0x%x, ECX: 0x%x, EDX: 0x%x\n",
+	       features.eax, features.ebx, features.ecx, features.edx);
+
+	cpuid_get_extended(&extended);
+	printf("CPU Brand: %s\n", extended.brand_string);
+
+	/* Idle */
+	for (;;) {
+		draw_status();
+		asm volatile("hlt");
+	}
 }

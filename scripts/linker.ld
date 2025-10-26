@@ -19,6 +19,16 @@ SECTIONS
         *(.text)
     }
 
+    /* Kernel symbol section - keep it even if unused, and export start/stop markers.
+       The KEEP() prevents linker GC from discarding the .ksym entries, ensuring
+       __start_ksym/__stop_ksym exist at runtime for ksym_lookup(). */
+    .ksym BLOCK(4K) : ALIGN(4K)
+    {
+        __start_ksym = .;
+        KEEP(*(.ksym))
+        __stop_ksym = .;
+    }
+
     /* Read-only data. */
     .rodata BLOCK(4K) : ALIGN(4K)
     {

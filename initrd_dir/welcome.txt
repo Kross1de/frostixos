@@ -1,0 +1,1 @@
+Hello! This file is locating in initial ramdisk, in FrostixOS!

@@ -14,5 +14,6 @@ void *memmove(void *dest, const void *src, size_t num);
 int memcmp(const void *ptr1, const void *ptr2, size_t num);
 char *strchr(const char *s, int c);
 char *strtok(char *str, const char *delim);
+unsigned long strtoul(const char *str, char **endptr, int base);
 
 #endif // STRING_H

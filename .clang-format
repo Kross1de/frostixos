@@ -1,0 +1,39 @@
+BasedOnStyle: LLVM
+Language:        Cpp
+
+UseTab:          Always
+IndentWidth:     8
+TabWidth:        8
+ContinuationIndentWidth: 8
+ColumnLimit:     80
+
+BreakBeforeBraces: Linux
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortCaseLabelsOnASingleLine: false
+
+PointerAlignment: Right
+DerivePointerAlignment: false
+
+AlignAfterOpenBracket: Align
+AlignOperands:   true
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignEscapedNewlines: Left
+
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+
+IndentCaseLabels: false
+IndentCaseBlocks: false
+BreakBeforeBinaryOperators: All
+AlwaysBreakAfterReturnType: None
+
+SortIncludes:    false
+IncludeBlocks:   Preserve
+
+KeepEmptyLinesAtTheStartOfBlocks: false
+NamespaceIndentation: None
+
+ReflowComments:  false

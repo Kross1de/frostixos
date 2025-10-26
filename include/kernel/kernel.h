@@ -5,11 +5,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/*
+ * Frostix kernel version information.
+ */
 #define FROSTIX_VERSION_MAJOR 0
 #define FROSTIX_VERSION_MINOR 1
 #define FROSTIX_VERSION_PATCH 0
 #define FROSTIX_VERSION_STRING "0.1.0"
 
+/*
+ * Integer types.
+ */
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -20,58 +26,89 @@ typedef signed short i16;
 typedef signed int s32;
 typedef signed long long s64;
 
+/*
+ * Kernel status codes. Negative values indicate errors.
+ */
 typedef enum {
-  KERNEL_OK = 0,
-  KERNEL_ERROR = -1,
-  KERNEL_INVALID_PARAM = -2,
-  KERNEL_OUT_OF_MEMORY = -3,
-  KERNEL_NOT_IMPLEMENTED = -4,
-  KERNEL_ALREADY_MAPPED = -5
+	KERNEL_OK = 0,
+	KERNEL_ERROR = -1,
+	KERNEL_INVALID_PARAM = -2,
+	KERNEL_OUT_OF_MEMORY = -3,
+	KERNEL_NOT_IMPLEMENTED = -4,
+	KERNEL_ALREADY_MAPPED = -5
 } kernel_status_t;
 
+/* Alignment helpers */
 #define ALIGN_UP(addr, align) (((addr) + (align) - 1) & ~((align) - 1))
 #define ALIGN_DOWN(addr, align) ((addr) & ~((align) - 1))
 #define PAGE_SIZE 4096
 #define PAGE_ALIGN(addr) ALIGN_UP(addr, PAGE_SIZE)
 
+/* Misc helpers */
 #define UNUSED(x) ((void)(x))
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+/*
+ * CPU flags wrappers. These are inline assembly stubs to enable/disable
+ * interrupts. They map to the classic x86 sti/cli instructions.
+ */
 #define sti() __asm__ volatile("sti")
 #define cli() __asm__ volatile("cli")
+#define cpu_relax() __asm__ volatile("rep; nop");
 
-static inline void outb(u16 port, u8 val) {
-  __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
+/*
+ * I/O port access helpers. These are small wrappers around inline asm
+ * to perform byte/word/dword I/O on the legacy x86 ports.
+ */
+static inline void outb(u16 port, u8 val)
+{
+	__asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline u8 inb(u16 port) {
-  u8 ret;
-  __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
-  return ret;
+static inline u8 inb(u16 port)
+{
+	u8 ret;
+
+	__asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
+	return ret;
 }
 
-static inline void outw(u16 port, u16 val) {
-  __asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port));
+static inline void outw(u16 port, u16 val)
+{
+	__asm__ volatile("outw %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline u16 inw(u16 port) {
-  u16 ret;
-  __asm__ volatile("inw %1, %0" : "=a"(ret) : "Nd"(port));
-  return ret;
+static inline u16 inw(u16 port)
+{
+	u16 ret;
+
+	__asm__ volatile("inw %1, %0" : "=a"(ret) : "Nd"(port));
+	return ret;
 }
 
-static inline void outl(u16 port, u32 val) {
-  __asm__ volatile("outl %0, %1" : : "a"(val), "Nd"(port));
+static inline void outl(u16 port, u32 val)
+{
+	__asm__ volatile("outl %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline u32 inl(u16 port) {
-  u32 ret;
-  __asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
-  return ret;
+static inline u32 inl(u16 port)
+{
+	u32 ret;
+
+	__asm__ volatile("inl %1, %0" : "=a"(ret) : "Nd"(port));
+	return ret;
 }
 
+/* Panic path - should not return. */
 void kernel_panic(const char *message) __attribute__((noreturn));
 
-#endif // KERNEL_H
+/* Assertion helper that routes to kernel_panic on failure. */
+static inline void kernel_assert(const char *expr, const char *file, int line)
+{
+	/* TODO: improve assertion messaging */
+	kernel_panic("Assertion failed: ");
+}
+
+#endif /* KERNEL_H */
