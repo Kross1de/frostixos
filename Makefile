@@ -6,7 +6,6 @@ VERSION := 0.1.0
 .DEFAULT_GOAL := all
 
 SRCDIR := src
-
 INCDIR := include
 LIBCINC := include/lib/libc
 BUILDDIR := build
@@ -87,9 +86,32 @@ $(BUILDDIR):
 	@mkdir -p $(BUILDDIR)
 	@mkdir -p $(dir $(OBJECTS))
 
-$(KERNEL): $(OBJECTS) | $(BUILDDIR)
-	$(call print_info,"Linking kernel...")
+$(BUILDDIR)/kernel_tmp.bin: $(OBJECTS) | $(BUILDDIR)
+	$(call print_info,"Linking temporary kernel...")
 	@$(LD) -T $(SCRIPTSDIR)/linker.ld -o $@ $(OBJECTS) $(LDFLAGS)
+
+$(BUILDDIR)/symbols.c: $(BUILDDIR)/kernel_tmp.bin
+	$(call print_info,"Generating symbol table...")
+	@nm -n --defined-only $< | awk '/ [Tt] / {printf "{0x%s, \"%s\"},\n", $$1, $$3}' > temp.txt
+	@echo "#include <stdint.h>" > $@
+	@echo "#include <stddef.h>" >> $@
+	@echo "struct symbol {" >> $@
+	@echo "  uint32_t addr;" >> $@
+	@echo "  const char *name;" >> $@
+	@echo "};" >> $@
+	@echo "struct symbol symbols[] = {" >> $@
+	@cat temp.txt >> $@
+	@echo "};" >> $@
+	@echo "size_t num_symbols = $$(wc -l < temp.txt);" >> $@
+	@rm temp.txt
+
+$(BUILDDIR)/symbols.o: $(BUILDDIR)/symbols.c | $(BUILDDIR)
+	$(call print_info,"Compiling generated symbols.c...")
+	@$(CC) -c $< -o $@ $(CFLAGS)
+
+$(KERNEL): $(BUILDDIR)/symbols.o $(OBJECTS) | $(BUILDDIR)
+	$(call print_info,"Linking final kernel...")
+	@$(LD) -T $(SCRIPTSDIR)/linker.ld -o $@ $^ $(LDFLAGS)
 	$(call print_success,"Kernel linked: $@")
 
 $(BUILDDIR)/%.o: $(SRCDIR)/%.c | $(BUILDDIR)
@@ -102,7 +124,7 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.s | $(BUILDDIR)
 	@mkdir -p $(dir $@)
 	@$(AS) $(ASFLAGS) $< -o $@
 
-$(ISO): $(KERNEL)
+$(ISO): $(KERNEL) $(BUILDDIR)/initrd.tar
 	$(call print_info,"Creating ISO...")
 	@mkdir -p $(ISODIR)/boot/grub
 	@cp $(KERNEL) $(ISODIR)/boot/
@@ -115,7 +137,12 @@ $(ISO): $(KERNEL)
 		exit 1; \
 	fi
 
-# Check multiboot compliance
+kernel_symbols: $(KERNEL)
+	nm -n --defined-only $(KERNEL) | awk '{print $$3}' > kernel_symbols.txt
+
+exported_ksyms.c: kernel_symbols.txt
+	awk '{print "EXPORT_KSYM(\"" $$1 "\");"}' kernel_symbols.txt > exported_ksyms.c
+
 check: $(KERNEL)
 	$(call print_info,"Checking multiboot compliance...")
 	@if command -v grub-file >/dev/null 2>&1; then \
@@ -169,6 +196,7 @@ clean:
 	@rm -f $(KERNEL)
 	@rm -f $(ISO)
 	@rm -rf $(ISODIR)
+	@rm -f $(BUILDDIR)/symbols.c $(BUILDDIR)/kernel_tmp.bin
 	$(call print_success,"Build artifacts cleaned")
 
 distclean: clean

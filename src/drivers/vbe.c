@@ -208,42 +208,54 @@ kernel_status_t vbe_fill_rect(u16 x, u16 y, u16 width, u16 height, vbe_color_t c
 	u8 *fb = vbe_get_framebuffer();
 	u32 pixel = vbe_color_to_pixel(color);
 	u32 bpp_bytes = g_device.bpp / 8;
-	u32 pat = vbe_replicate_pixel(pixel, g_device.bpp);
 
-	for (u16 row = 0; row < height; row++) {
-		u8 *dst = fb + (y + row) * g_device.pitch + x * bpp_bytes;
-		u32 remaining = width;
+	/* Fast path for 8/15/16/32 bpp using 32-bit stores. 24bpp needs a special path. */
+	if (g_device.bpp != 24) {
+		u32 pat = vbe_replicate_pixel(pixel, g_device.bpp);
+		for (u16 row = 0; row < height; row++) {
+			u8 *dst = fb + (y + row) * g_device.pitch + x * bpp_bytes;
+			u32 remaining = width;
 
-		/* Align to 32-bit boundary and write replicated pattern */
-		while (remaining >= 4 / bpp_bytes) {
-			VBE_WRITE32(dst, pat);
-			dst += 4;
-			remaining -= 4 / bpp_bytes;
-		}
-
-		/* Tail */
-		for (u32 i = 0; i < remaining; i++) {
-			switch (g_device.bpp) {
-			case 8:
-				*dst = (u8)pixel;
-				break;
-			case 15:
-			case 16:
-				*(u16 *)dst = (u16)pixel;
-				break;
-			case 24:
-				dst[0] = (u8)(pixel & 0xFF);
-				dst[1] = (u8)((pixel >> 8) & 0xFF);
-				dst[2] = (u8)((pixel >> 16) & 0xFF);
-				break;
-			case 32:
-				*(u32 *)dst = pixel;
-				break;
+			/* Write groups that fit exactly in 32-bit words */
+			u32 group_pixels = 4 / bpp_bytes; /* 4 for 8bpp, 2 for 16bpp, 1 for 32bpp */
+			while (group_pixels > 0 && remaining >= group_pixels) {
+				VBE_WRITE32(dst, pat);
+				dst += 4;
+				remaining -= group_pixels;
 			}
-			dst += bpp_bytes;
+
+			/* Tail */
+			for (u32 i = 0; i < remaining; i++) {
+				switch (g_device.bpp) {
+				case 8:
+					*dst = (u8)pixel;
+					break;
+				case 15:
+				case 16:
+					*(u16 *)dst = (u16)pixel;
+					break;
+				case 32:
+					*(u32 *)dst = pixel;
+					break;
+				default:
+					break;
+				}
+				dst += bpp_bytes;
+			}
 		}
+		return KERNEL_OK;
 	}
 
+	/* 24bpp path: write exactly 3 bytes per pixel to avoid corruption */
+	for (u16 row = 0; row < height; row++) {
+		u8 *dst = fb + (y + row) * g_device.pitch + x * bpp_bytes;
+		for (u16 col = 0; col < width; col++) {
+			dst[0] = (u8)(pixel & 0xFF);
+			dst[1] = (u8)((pixel >> 8) & 0xFF);
+			dst[2] = (u8)((pixel >> 16) & 0xFF);
+			dst += 3;
+		}
+	}
 	return KERNEL_OK;
 }
 

@@ -65,9 +65,7 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info)
 	pit_init(100);
 
 	sti();
-    
-//    kernel_panic("test");
-//
+
 	/* Memory managers */
 	pmm_init(multiboot_info);
 	vmm_init();

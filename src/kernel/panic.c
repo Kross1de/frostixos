@@ -11,17 +11,26 @@
 
 static void draw_panic(const char *message)
 {
+    /* Ensure font is ready even if kernel panicked before init */
+    font_init();
+
+    vbe_device_t *device = vbe_get_device();
+
     vbe_clear_screen(VBE_COLOR_DARK_BLUE);
+
+    vbe_draw_string_centered(50, "!!! KERNEL PANIC !!!", VBE_COLOR_RED, VBE_COLOR_DARK_BLUE);
+    vbe_draw_string_centered(80, message ? message : "Unknown panic", VBE_COLOR_YELLOW, VBE_COLOR_DARK_BLUE);
+    vbe_draw_string_centered(110, "System halted. Please restart your computer.", VBE_COLOR_WHITE, VBE_COLOR_DARK_BLUE);
 
     char buf[1024];
     stack_trace_to_buffer(buf, sizeof(buf));
 
     const char *p = buf;
-    int x_pos = 50;
-    int y_pos = 180;
+    int x_pos = 20;
+    int y_pos = 150;
     char line[256];
 
-    while (*p) {
+    while (*p && y_pos < (int)device->height - 50) {
         size_t i = 0;
         while (*p && *p != '\n' && i + 1 < sizeof(line)) {
             line[i++] = *p++;
@@ -33,18 +42,11 @@ static void draw_panic(const char *message)
             vbe_draw_string(x_pos, y_pos, line, VBE_COLOR_WHITE, VBE_COLOR_DARK_BLUE);
             y_pos += 16;
         }
-
-        /* Stop if we run out of vertical space */
-        if (y_pos > (int)vbe_get_device()->height - 80) break;
     }
-
-    vbe_draw_string_centered(50, "!!! KERNEL PANIC !!!", VBE_COLOR_RED, VBE_COLOR_DARK_BLUE);
-    vbe_draw_string_centered(120, message ? message : "Unknown panic", VBE_COLOR_YELLOW, VBE_COLOR_DARK_BLUE);
-    vbe_draw_string_centered(350, "System halted. Please restart your computer.", VBE_COLOR_WHITE, VBE_COLOR_DARK_BLUE);
 
     char version_str[64];
     snprintf(version_str, sizeof(version_str), "FrostixOS Version: %s", FROSTIX_VERSION_STRING);
-    vbe_draw_string_centered(vbe_get_device()->height - 50, version_str, VBE_COLOR_LIGHT_GRAY, VBE_COLOR_DARK_BLUE);
+    vbe_draw_string_centered(device->height - 30, version_str, VBE_COLOR_LIGHT_GRAY, VBE_COLOR_DARK_BLUE);
 }
 
 void kernel_panic(const char *message)
