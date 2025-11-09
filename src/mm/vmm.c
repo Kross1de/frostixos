@@ -69,6 +69,7 @@ kernel_status_t vmm_init(void)
 	u32 low_pt_phys;
 	if (!(kernel_page_directory[0] & PAGE_FLAG_PRESENT)) {
 		low_pt_phys = pmm_alloc_page();
+		if (!low_pt_phys) return KERNEL_OUT_OF_MEMORY;
 		if (low_pt_phys == 0)
 			return KERNEL_OUT_OF_MEMORY;
 		kernel_page_directory[0]
@@ -154,6 +155,7 @@ kernel_status_t vmm_map_page(u32 virt_addr, u32 phys_addr, u32 flags)
 			u32 pt_phys = pmm_alloc_page();
 			if (!pt_phys)
 				return KERNEL_OUT_OF_MEMORY;
+			tlb_invlpg((u32)(PAGE_RECURSIVE_PT_BASE + (pd_index << 12)));
 			pd[pd_index] = (pt_phys & ~0xFFF) | PAGE_FLAG_PRESENT
 				       | PAGE_FLAG_RW;
 			memset((void *)(PAGE_RECURSIVE_PT_BASE

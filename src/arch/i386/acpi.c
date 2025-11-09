@@ -208,13 +208,14 @@ static void acpi_parse_fadt(fadt_t *fadt)
 		else
 			pm1_cnt = *(volatile u16 *)(uintptr_t)pm1a_cnt_addr;
 
+		cpu_relax();
 		if (pm1_cnt & 0x1) {
 			log(LOG_OKAY, "ACPI: enabled (SCI_EN set)");
 			return;
 		}
 	}
 
-	log(LOG_ERR, "ACPI: failed to enable ACPI (timeout)");
+	log(LOG_ERR, "ACPI: timeout enabling SCI_EN after %u attempts", TIMEOUT);
 }
 
 /* Parse MADT and print entries we understand. */

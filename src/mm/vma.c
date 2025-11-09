@@ -180,6 +180,8 @@ int insert_vm_struct(mm_struct *mm, struct vm_area_struct *vma)
 	if (!prev) {
 		vma->vm_next = mm->mmap;
 		mm->mmap = vma;
+		if (vma->vm_end > mm->mmap->vm_start)
+			return -1; /* overlap with new head */
 	} else {
 		vma->vm_next = prev->vm_next;
 		prev->vm_next = vma;

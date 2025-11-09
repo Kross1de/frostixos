@@ -13,6 +13,9 @@ extern kernel_status_t vmm_unmap_page(u32 virt_addr);
 
 struct list_head kmem_caches;
 
+#define SLAB_VIRT_START 0xE0000000
+static uintptr_t next_slab_virt = SLAB_VIRT_START;
+
 /* Helpers */
 static inline uintptr_t page_base_from_ptr(const void *p)
 {
@@ -43,8 +46,9 @@ static int new_slab(struct kmem_cache *cache)
 	if (!phys)
 		return -1;
 
-	/* Map the page into the kernel virtual space (identity mapping) */
-	uintptr_t virt = (uintptr_t)phys;
+	uintptr_t virt = next_slab_virt;
+	next_slab_virt += PAGE_SIZE;
+
 	int ret = vmm_map_page(virt, phys,
 			       PAGE_FLAG_PRESENT | PAGE_FLAG_RW
 				       | PAGE_FLAG_GLOBAL);
@@ -93,82 +97,58 @@ int slab_init(void)
 
 /* Create a kmem cache. Returns NULL on failure. */
 struct kmem_cache *kmem_cache_create(const char *name, uint32_t size,
-				     uint32_t align, uint32_t flags,
-				     ctor_t ctor)
+                                     uint32_t align, uint32_t flags,
+                                     ctor_t ctor)
 {
-	/* Validation */
-	if (!name || size == 0 || align < SLAB_MIN_ALIGN
-	    || (align & (align - 1)) != 0) {
-		log(LOG_WARN, "SLAB: invalid arguments to kmem_cache_create");
-		return NULL;
-	}
+    /* Validation */
+    if (!name || size == 0 || align < SLAB_MIN_ALIGN
+        || (align & (align - 1)) != 0) {
+        log(LOG_WARN, "SLAB: invalid arguments to kmem_cache_create");
+        return NULL;
+    }
 
-	/* Allocate a page for the cache metadata */
-	uint32_t phys = pmm_alloc_page();
-	if (!phys) {
-		log(LOG_WARN, "SLAB: out of memory while creating cache '%s'",
-		    name);
-		return NULL;
-	}
+    size_t name_len = strlen(name) + 1;
+    size_t cache_size = sizeof(struct kmem_cache) + name_len;
+    struct kmem_cache *cache = kmalloc(cache_size);
+    if (!cache) {
+        log(LOG_WARN, "SLAB: out of memory while creating cache '%s'", name);
+        return NULL;
+    }
+    memset(cache, 0, sizeof(*cache));
 
-	uintptr_t virt = (uintptr_t)phys;
-	if (vmm_map_page(virt, phys,
-			 PAGE_FLAG_PRESENT | PAGE_FLAG_RW | PAGE_FLAG_GLOBAL)
-	    != 0) {
-		pmm_free_page(phys);
-		log(LOG_WARN, "SLAB: vmm_map_page failed for cache '%s'", name);
-		return NULL;
-	}
+    char *name_copy = (char *)(cache + 1);
+    memcpy(name_copy, name, name_len);
+    cache->name = name_copy;
 
-	/* Place the kmem_cache at the start of the page */
-	struct kmem_cache *cache = (struct kmem_cache *)virt;
-	memset(cache, 0, sizeof(*cache));
+    cache->align = align;
+    cache->object_size = ALIGN_UP(size, align);
+    cache->flags = flags;
+    cache->ctor = ctor;
 
-	/* Copy the name into space after the cache struct if it fits */
-	size_t name_len = strlen(name) + 1;
-	if (sizeof(*cache) + name_len > PAGE_SIZE) {
-		vmm_unmap_page(virt);
-		pmm_free_page(phys);
-		log(LOG_WARN, "SLAB: cache name too long for '%s'", name);
-		return NULL;
-	}
+    /* Compute objects_per_slab using dummy address */
+    uintptr_t dummy_virt = 0;
+    uintptr_t first_obj_off = ALIGN_UP(dummy_virt + sizeof(struct slab), align);
+    uint32_t avail = PAGE_SIZE - first_obj_off;
+    cache->objects_per_slab = avail / cache->object_size;
 
-	char *name_copy = (char *)(cache + 1);
-	memcpy(name_copy, name, name_len);
-	cache->name = name_copy;
+    if (cache->objects_per_slab == 0) {
+        kfree(cache);
+        log(LOG_WARN, "SLAB: object too large for page (cache=%s)", name);
+        return NULL;
+    }
 
-	/* Compute aligned object size and count of objects per slab */
-	cache->align = align;
-	cache->object_size = ALIGN_UP(size, align);
-	cache->flags = flags;
-	cache->ctor = ctor;
+    INIT_LIST_HEAD(&cache->slabs_full);
+    INIT_LIST_HEAD(&cache->slabs_partial);
+    INIT_LIST_HEAD(&cache->slabs_free);
+    INIT_LIST_HEAD(&cache->list);
 
-	/* Determine how many objects fit in a single page slab */
-	uintptr_t first_obj_off
-		= ALIGN_UP((uintptr_t)virt + sizeof(struct slab), align);
-	uint32_t avail = PAGE_SIZE - (first_obj_off - virt);
-	cache->objects_per_slab = avail / cache->object_size;
+    /* Add cache to global list */
+    list_add_tail(&cache->list, &kmem_caches);
 
-	if (cache->objects_per_slab == 0) {
-		vmm_unmap_page(virt);
-		pmm_free_page(phys);
-		log(LOG_WARN, "SLAB: object too large for page (cache=%s)",
-		    name);
-		return NULL;
-	}
+    log(LOG_OKAY, "SLAB: created cache '%s' obj_size=%u objs_per_slab=%u",
+        cache->name, cache->object_size, cache->objects_per_slab);
 
-	INIT_LIST_HEAD(&cache->slabs_full);
-	INIT_LIST_HEAD(&cache->slabs_partial);
-	INIT_LIST_HEAD(&cache->slabs_free);
-	INIT_LIST_HEAD(&cache->list);
-
-	/* Add cache to global list */
-	list_add_tail(&cache->list, &kmem_caches);
-
-	log(LOG_OKAY, "SLAB: created cache '%s' obj_size=%u objs_per_slab=%u",
-	    cache->name, cache->object_size, cache->objects_per_slab);
-
-	return cache;
+    return cache;
 }
 
 /* Destroy a cache and free all slabs (best-effort). */
@@ -183,6 +163,7 @@ void kmem_cache_destroy(struct kmem_cache *cache)
 	if (inuse) {
 		log(LOG_WARN, "SLAB: destroying cache '%s' with in-use objects",
 		    cache->name);
+	kmem_cache_shrink(cache);
 	}
 
 	/* Remove from global cache list */

@@ -3,6 +3,7 @@
 
 #include <kernel/kernel.h>
 #include <misc/list.h>
+#include <mm/heap.h>
 
 /*
  * Simple slab allocator API.

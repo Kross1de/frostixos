@@ -101,24 +101,6 @@ void kernel_main(u32 multiboot_magic, multiboot_info_t *multiboot_info)
 	/* Start interactive shell */
 	shell_start();
 
-	/* Fallback message if shell returns */
-	printf("Welcome to FrostixOS!\n");
-
-	/* Probe CPU */
-	cpuid_vendor_t vendor;
-	cpuid_features_t features;
-	cpuid_extended_t extended;
-
-	cpuid_get_vendor(&vendor);
-	printf("CPU Vendor: %s\n", vendor.vendor);
-
-	cpuid_get_features(&features);
-	printf("CPU Features - EAX: 0x%x, EBX: 0x%x, ECX: 0x%x, EDX: 0x%x\n",
-	       features.eax, features.ebx, features.ecx, features.edx);
-
-	cpuid_get_extended(&extended);
-	printf("CPU Brand: %s\n", extended.brand_string);
-
 	/* Idle */
 	for (;;) {
 		draw_status();

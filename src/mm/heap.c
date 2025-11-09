@@ -24,45 +24,57 @@ static u32 heap_current_end = HEAP_START;
 /* Expand the heap area by at least the given size in bytes */
 static kernel_status_t heap_expand(size_t additional_size)
 {
-	additional_size
-		= PAGE_ALIGN(additional_size + sizeof(struct heap_block));
+	additional_size = PAGE_ALIGN(additional_size + sizeof(struct heap_block));
 	u32 num_pages = additional_size / PAGE_SIZE;
+
 	log(LOG_INFO, "Expanding heap by %u bytes (%u pages) at 0x%x",
 	    additional_size, num_pages, heap_current_end);
-	u32 phys_addr = pmm_alloc_pages(num_pages);
-	if (phys_addr == 0) {
-		log(LOG_ERR, "Failed to allocate %u physical pages", num_pages);
-		return KERNEL_OUT_OF_MEMORY;
+
+	for (int retry = 0; retry < 3; ++retry) {
+		u32 phys_addr = pmm_alloc_pages(num_pages);
+		if (phys_addr == 0) {
+			log(LOG_WARN, "Heap expand retry %d/%d failed (OOM)", retry + 1, 3);
+			continue;
+		}
+
+		kernel_status_t status = vmm_map_pages(
+			heap_current_end, phys_addr, num_pages,
+			PAGE_FLAG_PRESENT | PAGE_FLAG_RW);
+
+		if (status != KERNEL_OK) {
+			log(LOG_ERR, "Heap expand: vmm_map_pages failed (%d) at 0x%x",
+			    status, heap_current_end);
+			pmm_free_pages(phys_addr, num_pages);
+			continue;
+		}
+
+		struct heap_block *new_block = (struct heap_block *)heap_current_end;
+		memset(new_block, 0, additional_size);
+
+		new_block->size  = additional_size - sizeof(struct heap_block);
+		new_block->free  = true;
+		new_block->next  = NULL;
+		new_block->prev  = NULL;
+		new_block->magic = HEAP_MAGIC;
+
+		log(LOG_INFO, "Heap: new block at 0x%x, usable size %u bytes",
+		    (u32)new_block, new_block->size);
+
+		if (heap_head == NULL) {
+			heap_head = new_block;
+		} else {
+			struct heap_block *last = heap_head;
+			while (last->next) last = last->next;
+			last->next = new_block;
+			new_block->prev = last;
+		}
+
+		heap_current_end += additional_size;
+		return KERNEL_OK;
 	}
-	kernel_status_t status
-		= vmm_map_pages(heap_current_end, phys_addr, num_pages,
-				PAGE_FLAG_PRESENT | PAGE_FLAG_RW);
-	if (status != KERNEL_OK) {
-		log(LOG_ERR, "Failed to map %u pages at 0x%x, status: %d",
-		    num_pages, heap_current_end, status);
-		pmm_free_pages(phys_addr, num_pages);
-		return status;
-	}
-	struct heap_block *new_block = (struct heap_block *)heap_current_end;
-	memset(new_block, 0, additional_size);
-	new_block->size = additional_size - sizeof(struct heap_block);
-	new_block->free = true;
-	new_block->next = NULL;
-	new_block->prev = NULL;
-	new_block->magic = HEAP_MAGIC;
-	log(LOG_INFO, "Created new block at 0x%x, size: %u", (u32)new_block,
-	    new_block->size);
-	if (heap_head == NULL) {
-		heap_head = new_block;
-	} else {
-		struct heap_block *last = heap_head;
-		while (last->next != NULL)
-			last = last->next;
-		last->next = new_block;
-		new_block->prev = last;
-	}
-	heap_current_end += additional_size;
-	return KERNEL_OK;
+
+	log(LOG_ERR, "Heap expansion failed after 3 retries");
+	return KERNEL_OUT_OF_MEMORY;
 }
 
 /* Try to merge adjacent free blocks */
@@ -249,32 +261,38 @@ void kfree(void *ptr)
 
 	struct heap_block *block
 		= (struct heap_block *)((u8 *)ptr - sizeof(struct heap_block));
+
 	if (block->magic != HEAP_MAGIC) {
-		log(LOG_ERR, "Invalid heap block at 0x%x", (u32)block);
-		return;
+		log(LOG_ERR, "Heap corruption: bad magic 0x%x at block 0x%x (user ptr 0x%x)",
+		      block->magic, (u32)block, (u32)ptr);
 	}
 
-	if (!block->free) {
-		block->free = true;
+	if (block->free) {
+		log(LOG_ERR, "Double free detected: block at 0x%x (user ptr 0x%x) already free",
+		      (u32)block, (u32)ptr);
+	}
 
-		if (block->next != NULL && block->next->free
-		    && block->next->magic == HEAP_MAGIC) {
-			block->size += sizeof(struct heap_block)
-				       + block->next->size;
-			block->next = block->next->next;
-			if (block->next) {
-				block->next->prev = block;
-			}
-		}
+	block->free = true;
 
-		if (block->prev != NULL && block->prev->free
-		    && block->prev->magic == HEAP_MAGIC) {
-			block->prev->size
-				+= sizeof(struct heap_block) + block->size;
-			block->prev->next = block->next;
-			if (block->next) {
-				block->next->prev = block->prev;
-			}
+	/* Merge with next free block */
+	if (block->next && block->next->free && block->next->magic == HEAP_MAGIC) {
+		block->size += sizeof(struct heap_block) + block->next->size;
+		block->next = block->next->next;
+		if (block->next) {
+			block->next->prev = block;
 		}
+		log(LOG_INFO, "Heap: merged next block at 0x%x", (u32)block);
+	}
+
+	/* Merge with previous free block (prev absorbs us) */
+	if (block->prev && block->prev->free && block->prev->magic == HEAP_MAGIC) {
+		block->prev->size += sizeof(struct heap_block) + block->size;
+		block->prev->next = block->next;
+		if (block->next) {
+			block->next->prev = block->prev;
+		}
+		log(LOG_INFO, "Heap: merged into prev block at 0x%x", (u32)block->prev);
+		/* block is now invalid - do not touch it again */
+		return;
 	}
 }
